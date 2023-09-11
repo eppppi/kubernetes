@@ -61,6 +61,8 @@ import (
 	"k8s.io/kubernetes/pkg/controller"
 	"k8s.io/kubernetes/pkg/controller/replicaset/metrics"
 	"k8s.io/utils/integer"
+
+	k8scarrier "github.com/eppppi/k8s-object-carrier/carrier"
 )
 
 const (
@@ -293,6 +295,7 @@ func (rsc *ReplicaSetController) enqueueRS(rs *apps.ReplicaSet) {
 		return
 	}
 
+	// ETODO: start span?
 	rsc.queue.Add(key)
 }
 
@@ -303,12 +306,14 @@ func (rsc *ReplicaSetController) enqueueRSAfter(rs *apps.ReplicaSet, duration ti
 		return
 	}
 
+	// ETODO: start span?
 	rsc.queue.AddAfter(key, duration)
 }
 
 func (rsc *ReplicaSetController) addRS(logger klog.Logger, obj interface{}) {
 	rs := obj.(*apps.ReplicaSet)
 	logger.V(4).Info("Adding", "replicaSet", klog.KObj(rs))
+	// ETODO: start span?
 	rsc.enqueueRS(rs)
 }
 
@@ -345,6 +350,7 @@ func (rsc *ReplicaSetController) updateRS(logger klog.Logger, old, cur interface
 	if *(oldRS.Spec.Replicas) != *(curRS.Spec.Replicas) {
 		logger.V(4).Info("replicaSet updated. Desired pod count change.", "replicaSet", klog.KObj(oldRS), "oldReplicas", *(oldRS.Spec.Replicas), "newReplicas", *(curRS.Spec.Replicas))
 	}
+	// ETODO: start span?
 	rsc.enqueueRS(curRS)
 }
 

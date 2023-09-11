@@ -541,6 +541,49 @@ func (o *ApplyOptions) Run() error {
 	return nil
 }
 
+// EPPPPI-TODO
+func metav1ObjToRuntimeObj(metav1Obj metav1.Object) (runtime.Object, error) {
+	return nil, nil
+}
+
+// EPPPPI-TODO
+func createAndAppendTraceInfo(infoObj runtime.Object) (runtime.Object, error) {
+	// info.Objectからmetav1.Objectに変換
+	obj, err := meta.Accessor(infoObj)
+	if err != nil {
+		return nil, fmt.Errorf("cannot convert to metav1.Object")
+	}
+
+	// アノテーションを生成 & オブジェクトに追加
+	annotations := obj.GetAnnotations()
+	if annotations == nil {
+		annotations = make(map[string]string)
+	}
+
+	// TraceId
+	traceIdKey, traceIdVal := "github.com/eppppi/k8s-trace/SAMPLE-TRACE-KEY", "SAMPLE-TRACE-VAL"
+	annotations[traceIdKey] = traceIdVal
+	// ParentId (null)
+	parentIdKey, parentIdVal := "github.com/eppppi/k8s-trace/SAMPLE-PARENT-KEY", "SAMPLE-PARENT-VAL-NULL"
+	annotations[parentIdKey] = parentIdVal
+	// SpanId
+	spanIdKey, spanIdVal := "github.com/eppppi/k8s-trace/SAMPLE-SPAN-KEY", "SAMPLE-SPAN-VAL"
+	annotations[spanIdKey] = spanIdVal
+
+	obj.SetAnnotations(annotations)
+
+	// metav1.Objectからinfo.Objectに再変換
+	newInfoObj, err := metav1ObjToRuntimeObj(obj)
+	if err != nil {
+
+	}
+
+	fmt.Println("applied!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!  IN STAGING !!!!!!!!!!!!!!!!!!")
+
+	return newInfoObj, nil
+
+}
+
 func (o *ApplyOptions) applyOneObject(info *resource.Info) error {
 	o.MarkNamespaceVisited(info)
 
@@ -554,6 +597,11 @@ func (o *ApplyOptions) applyOneObject(info *resource.Info) error {
 		if len(generatedName) > 0 {
 			return fmt.Errorf("from %s: cannot use generate name with apply", generatedName)
 		}
+	}
+
+	newInfoObj, err := createAndAppendTraceInfo(info.Object)
+	if err != nil {
+		info.Object = newInfoObj
 	}
 
 	helper := resource.NewHelper(info.Client, info.Mapping).
@@ -571,6 +619,7 @@ func (o *ApplyOptions) applyOneObject(info *resource.Info) error {
 		options := metav1.PatchOptions{
 			Force: &o.ForceConflicts,
 		}
+		// EPPPPI-NOTE: ここで実際にapplyしているっぽい
 		obj, err := helper.Patch(
 			info.Namespace,
 			info.Name,
