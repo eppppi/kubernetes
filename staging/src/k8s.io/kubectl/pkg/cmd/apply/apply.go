@@ -541,6 +541,8 @@ func (o *ApplyOptions) Run() error {
 	return nil
 }
 
+const TRACE_PREFIX = "k8s-trace.eppppi.github.com"
+
 // EPPPPI-TODO
 func metav1ObjToRuntimeObj(metav1Obj metav1.Object) (runtime.Object, error) {
 	return nil, nil
@@ -561,13 +563,13 @@ func createAndAppendTraceInfo(infoObj runtime.Object) (runtime.Object, error) {
 	}
 
 	// TraceId
-	traceIdKey, traceIdVal := "github.com/eppppi/k8s-trace/SAMPLE-TRACE-KEY", "SAMPLE-TRACE-VAL"
+	traceIdKey, traceIdVal := TRACE_PREFIX+"/SAMPLE-TRACE-KEY", "SAMPLE-TRACE-VAL"
 	annotations[traceIdKey] = traceIdVal
 	// ParentId (null)
-	parentIdKey, parentIdVal := "github.com/eppppi/k8s-trace/SAMPLE-PARENT-KEY", "SAMPLE-PARENT-VAL-NULL"
+	parentIdKey, parentIdVal := TRACE_PREFIX+"/SAMPLE-PARENT-KEY", "SAMPLE-PARENT-VAL-NULL"
 	annotations[parentIdKey] = parentIdVal
 	// SpanId
-	spanIdKey, spanIdVal := "github.com/eppppi/k8s-trace/SAMPLE-SPAN-KEY", "SAMPLE-SPAN-VAL"
+	spanIdKey, spanIdVal := TRACE_PREFIX+"/SAMPLE-SPAN-KEY", "SAMPLE-SPAN-VAL"
 	annotations[spanIdKey] = spanIdVal
 
 	obj.SetAnnotations(annotations)
@@ -578,7 +580,7 @@ func createAndAppendTraceInfo(infoObj runtime.Object) (runtime.Object, error) {
 
 	}
 
-	fmt.Println("applied!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!  IN STAGING !!!!!!!!!!!!!!!!!!")
+	fmt.Println("applied!!!!!!!!!!!!!!!!  IN STAGING !!!!!!!!!!!!!!!!!!")
 
 	return newInfoObj, nil
 
