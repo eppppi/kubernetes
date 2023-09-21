@@ -6,10 +6,11 @@ go 1.20
 
 require (
 	github.com/davecgh/go-spew v1.1.1
+	// github.com/eppppi/k8s-object-carrier v0.0.0-20230920043619-75b21f2252f9
 	github.com/google/go-cmp v0.5.9
 	github.com/stretchr/testify v1.8.2
 	k8s.io/api v0.0.0
-	k8s.io/apimachinery v0.0.0
+	k8s.io/apimachinery v0.28.1
 	k8s.io/client-go v0.0.0
 	k8s.io/component-base v0.0.0
 	k8s.io/klog/v2 v2.100.1

@@ -18,6 +18,7 @@ package apply
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -52,6 +53,8 @@ import (
 	"k8s.io/kubectl/pkg/util/slice"
 	"k8s.io/kubectl/pkg/util/templates"
 	"k8s.io/kubectl/pkg/validation"
+
+	k8sannotation "github.com/eppppi/k8s-object-carrier/annotation"
 )
 
 // ApplyFlags directly reflect the information that CLI is gathering via flags.  They will be converted to Options, which
@@ -562,15 +565,21 @@ func createAndAppendTraceInfo(infoObj runtime.Object) (runtime.Object, error) {
 		annotations = make(map[string]string)
 	}
 
-	// TraceId
-	traceIdKey, traceIdVal := TRACE_PREFIX+"/SAMPLE-TRACE-KEY", "SAMPLE-TRACE-VAL"
-	annotations[traceIdKey] = traceIdVal
-	// ParentId (null)
-	parentIdKey, parentIdVal := TRACE_PREFIX+"/SAMPLE-PARENT-KEY", "SAMPLE-PARENT-VAL-NULL"
-	annotations[parentIdKey] = parentIdVal
-	// SpanId
-	spanIdKey, spanIdVal := TRACE_PREFIX+"/SAMPLE-SPAN-KEY", "SAMPLE-SPAN-VAL"
-	annotations[spanIdKey] = spanIdVal
+	k8sCtx := k8sannotation.NewRootContext()
+	fmt.Println(k8sCtx.String())
+
+	k8sCtxs := k8sannotation.ObjContexts{k8sCtx}
+	k8sCtxs = append(k8sCtxs, k8sannotation.NewRootContext())
+	fmt.Println(k8sCtxs.String())
+	k8sCtxsJson, err := json.Marshal(k8sCtxs)
+	if err != nil {
+		fmt.Errorf("%s", err.Error())
+	}
+	fmt.Println(string(k8sCtxsJson))
+	if err != nil {
+		fmt.Errorf("cannot marshal k8sCtxs: %s", err.Error())
+	}
+	annotations["k8s-trace.eppppi.github.com/contexts"] = string(k8sCtxsJson)
 
 	obj.SetAnnotations(annotations)
 

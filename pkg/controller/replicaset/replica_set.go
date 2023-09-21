@@ -65,6 +65,8 @@ import (
 	k8scarrier "github.com/eppppi/k8s-object-carrier/carrier"
 )
 
+const prefix = k8scarrier.KOC_PREFIX
+
 const (
 	// Realistic value of the burstReplica field for the replica set manager based off
 	// performance requirements for kubernetes 1.0.

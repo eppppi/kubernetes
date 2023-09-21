@@ -1,7 +1,3 @@
-# github.com/eppppi/k8s-object-carrier v0.0.0-20230829125821-3073d1a275d7
-## explicit; go 1.20
-github.com/eppppi/k8s-object-carrier
-github.com/eppppi/k8s-object-carrier/carrier
 # bitbucket.org/bertimus9/systemstat v0.5.0
 ## explicit; go 1.17
 bitbucket.org/bertimus9/systemstat
@@ -203,6 +199,10 @@ github.com/dustin/go-humanize
 ## explicit; go 1.13
 github.com/emicklei/go-restful/v3
 github.com/emicklei/go-restful/v3/log
+# github.com/eppppi/k8s-object-carrier v0.0.0-20230920043619-75b21f2252f9
+## explicit; go 1.20
+github.com/eppppi/k8s-object-carrier/annotation
+github.com/eppppi/k8s-object-carrier/carrier
 # github.com/euank/go-kmsg-parser v2.0.0+incompatible
 ## explicit
 github.com/euank/go-kmsg-parser/kmsgparser

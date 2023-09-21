@@ -30,7 +30,8 @@ require (
 	github.com/docker/distribution v2.8.2+incompatible
 	github.com/docker/go-units v0.5.0
 	github.com/emicklei/go-restful/v3 v3.9.0
-	github.com/eppppi/k8s-object-carrier v0.0.0-20230829125821-3073d1a275d7
+	github.com/eppppi/k8s-object-carrier v0.0.0-20230921050948-919a4994a1b0
+	// github.com/eppppi/k8s-object-carrier v0.0.0-20230920043619-75b21f2252f9
 	github.com/evanphx/json-patch v5.6.0+incompatible
 	github.com/fsnotify/fsnotify v1.6.0
 	github.com/go-logr/logr v1.2.4
@@ -97,7 +98,7 @@ require (
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/api v0.0.0
 	k8s.io/apiextensions-apiserver v0.0.0
-	k8s.io/apimachinery v0.0.0
+	k8s.io/apimachinery v0.28.1
 	k8s.io/apiserver v0.0.0
 	k8s.io/cli-runtime v0.0.0
 	k8s.io/client-go v0.0.0

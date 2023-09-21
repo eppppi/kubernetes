@@ -9,6 +9,8 @@ require (
 	github.com/chai2010/gettext-go v1.0.2
 	github.com/daviddengcn/go-colortext v1.0.0
 	github.com/docker/distribution v2.8.2+incompatible
+	github.com/eppppi/k8s-object-carrier v0.0.0-20230920043619-75b21f2252f9
+	// github.com/eppppi/k8s-object-carrier v0.0.0-20230920043619-75b21f2252f9
 	github.com/evanphx/json-patch v5.6.0+incompatible
 	github.com/exponent-io/jsonpath v0.0.0-20151013193312-d6023ce2651d
 	github.com/fatih/camelcase v1.0.0
@@ -31,7 +33,7 @@ require (
 	golang.org/x/sys v0.10.0
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.0.0
-	k8s.io/apimachinery v0.0.0
+	k8s.io/apimachinery v0.28.1
 	k8s.io/cli-runtime v0.0.0
 	k8s.io/client-go v0.0.0
 	k8s.io/component-base v0.0.0
