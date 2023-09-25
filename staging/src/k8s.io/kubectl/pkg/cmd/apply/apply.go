@@ -544,8 +544,6 @@ func (o *ApplyOptions) Run() error {
 	return nil
 }
 
-const TRACE_PREFIX = "k8s-trace.eppppi.github.com"
-
 // EPPPPI-TODO
 func metav1ObjToRuntimeObj(metav1Obj metav1.Object) (runtime.Object, error) {
 	return nil, nil
@@ -573,12 +571,9 @@ func createAndAppendTraceInfo(infoObj runtime.Object) (runtime.Object, error) {
 	fmt.Println(k8sCtxs.String())
 	k8sCtxsJson, err := json.Marshal(k8sCtxs)
 	if err != nil {
-		fmt.Errorf("%s", err.Error())
+		return nil, err
 	}
 	fmt.Println(string(k8sCtxsJson))
-	if err != nil {
-		fmt.Errorf("cannot marshal k8sCtxs: %s", err.Error())
-	}
 	annotations["k8s-trace.eppppi.github.com/contexts"] = string(k8sCtxsJson)
 
 	obj.SetAnnotations(annotations)
@@ -586,7 +581,7 @@ func createAndAppendTraceInfo(infoObj runtime.Object) (runtime.Object, error) {
 	// metav1.Objectからinfo.Objectに再変換
 	newInfoObj, err := metav1ObjToRuntimeObj(obj)
 	if err != nil {
-
+		return nil, err
 	}
 
 	fmt.Println("applied!!!!!!!!!!!!!!!!  IN STAGING !!!!!!!!!!!!!!!!!!")
