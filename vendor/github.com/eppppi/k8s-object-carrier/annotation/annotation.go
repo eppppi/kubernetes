@@ -8,50 +8,50 @@ import (
 
 // Here contains the ids required for otel propagation
 type ObjContext struct {
-	traceId  string
-	parentId string
-	spanId   string
+	TraceId  string `json:"traceId"`
+	ParentId string `json:"parentId"`
+	SpanId   string `json:"spanId"`
 }
 
 type ObjContexts []ObjContext
 
 // String is a method to print the context
 func (c *ObjContext) String() string {
-	return fmt.Sprintf("traceId: %s, parentId: %s, spanId: %s", c.traceId, c.parentId, c.spanId)
+	return fmt.Sprintf("traceId: %s, parentId: %s, spanId: %s", c.TraceId, c.ParentId, c.SpanId)
 }
 
 // CreateChildContext is a method to create a child context
 func (c *ObjContext) CreateChildContext() ObjContext {
 	return ObjContext{
-		traceId:  c.traceId,
-		parentId: c.spanId,
-		spanId:   generateSpanId(),
+		TraceId:  c.TraceId,
+		ParentId: c.SpanId,
+		SpanId:   generateSpanId(),
 	}
 }
 
 // String is a method to print the contexts
 func (cs *ObjContexts) String() string {
-	s := ""
+	s := "number of contexts: " + fmt.Sprintf("%d", len(*cs)) + "\n"
 	for _, c := range *cs {
 		s += c.String() + "\n"
 	}
 	return s
 }
 
-// GetTraceId is a method to get the traceId
-func (c *ObjContext) GetTraceId() string {
-	return c.traceId
-}
+// // GetTraceId is a method to get the traceId
+// func (c *ObjContext) GetTraceId() string {
+// 	return c.traceId
+// }
 
-// GetParentId is a method to get the parentId
-func (c *ObjContext) GetParentId() string {
-	return c.parentId
-}
+// // GetParentId is a method to get the parentId
+// func (c *ObjContext) GetParentId() string {
+// 	return c.parentId
+// }
 
-// GetSpanId is a method to get the spanId
-func (c *ObjContext) GetSpanId() string {
-	return c.spanId
-}
+// // GetSpanId is a method to get the spanId
+// func (c *ObjContext) GetSpanId() string {
+// 	return c.spanId
+// }
 
 // TODO: replace to the off-the-shelf library in OpenTelemetry
 // generateTraceId is a method to generate a trace id
@@ -70,8 +70,8 @@ func generateSpanId() string {
 // NewRootContext is a method to create a root context
 func NewRootContext() ObjContext {
 	return ObjContext{
-		traceId:  generateTraceId(),
-		parentId: "",
-		spanId:   generateSpanId(),
+		TraceId:  generateTraceId(),
+		ParentId: "",
+		SpanId:   generateSpanId(),
 	}
 }
