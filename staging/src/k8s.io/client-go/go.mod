@@ -5,7 +5,6 @@ module k8s.io/client-go
 go 1.20
 
 require (
-	// github.com/eppppi/k8s-object-carrier v0.0.0-20230920043619-75b21f2252f9
 	github.com/evanphx/json-patch v5.6.0+incompatible
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da

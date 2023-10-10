@@ -11,7 +11,6 @@ require (
 	github.com/Azure/go-autorest/autorest/adal v0.9.23
 	github.com/Azure/go-autorest/autorest/mocks v0.4.2
 	github.com/GoogleCloudPlatform/k8s-cloud-provider v1.18.1-0.20220218231025-f11817397a1b
-	// github.com/eppppi/k8s-object-carrier v0.0.0-20230920043619-75b21f2252f9
 	github.com/golang/mock v1.6.0
 	github.com/google/go-cmp v0.5.9
 	github.com/rubiojr/go-vhd v0.0.0-20200706105327-02e210299021

@@ -199,7 +199,7 @@ github.com/dustin/go-humanize
 ## explicit; go 1.13
 github.com/emicklei/go-restful/v3
 github.com/emicklei/go-restful/v3/log
-# github.com/eppppi/k8s-object-carrier v0.0.0-20230921050948-919a4994a1b0
+# github.com/eppppi/k8s-object-carrier v0.1.0 => github.com/eppppi/k8s-object-carrier v0.1.0
 ## explicit; go 1.20
 github.com/eppppi/k8s-object-carrier/annotation
 github.com/eppppi/k8s-object-carrier/carrier
@@ -891,6 +891,9 @@ go.opentelemetry.io/otel/exporters/otlp/otlptrace/internal/tracetransform
 # go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.10.0
 ## explicit; go 1.17
 go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc
+# go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.2.0 => go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.2.0
+## explicit; go 1.15
+go.opentelemetry.io/otel/exporters/stdout/stdouttrace
 # go.opentelemetry.io/otel/metric v0.31.0
 ## explicit; go 1.17
 go.opentelemetry.io/otel/metric
@@ -2535,6 +2538,8 @@ sigs.k8s.io/structured-merge-diff/v4/value
 # sigs.k8s.io/yaml v1.3.0
 ## explicit; go 1.12
 sigs.k8s.io/yaml
+# github.com/eppppi/k8s-object-carrier => github.com/eppppi/k8s-object-carrier v0.1.0
+# go.opentelemetry.io/otel/exporters/stdout/stdouttrace => go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.2.0
 # k8s.io/api => ./staging/src/k8s.io/api
 # k8s.io/apiextensions-apiserver => ./staging/src/k8s.io/apiextensions-apiserver
 # k8s.io/apimachinery => ./staging/src/k8s.io/apimachinery

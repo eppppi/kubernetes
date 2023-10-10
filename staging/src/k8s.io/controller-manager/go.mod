@@ -5,7 +5,6 @@ module k8s.io/controller-manager
 go 1.20
 
 require (
-	// github.com/eppppi/k8s-object-carrier v0.0.0-20230920043619-75b21f2252f9
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.8.2
 	golang.org/x/oauth2 v0.8.0

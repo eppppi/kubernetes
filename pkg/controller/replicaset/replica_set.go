@@ -36,6 +36,7 @@ import (
 	"sync"
 	"time"
 
+	k8scarrier "github.com/eppppi/k8s-object-carrier/carrier"
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -61,8 +62,6 @@ import (
 	"k8s.io/kubernetes/pkg/controller"
 	"k8s.io/kubernetes/pkg/controller/replicaset/metrics"
 	"k8s.io/utils/integer"
-
-	k8scarrier "github.com/eppppi/k8s-object-carrier/carrier"
 )
 
 const prefix = k8scarrier.KOC_PREFIX
@@ -152,8 +151,13 @@ func NewBaseController(logger klog.Logger, rsInformer appsinformers.ReplicaSetIn
 		queue:            workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), queueName),
 	}
 
+	// setup otel tracer
+	setupTracer()
+
 	rsInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
+			// add trace stuff
+			DoSomething(context.Background(), "foo-value", "bar-value")
 			rsc.addRS(logger, obj)
 		},
 		UpdateFunc: func(oldObj, newObj interface{}) {

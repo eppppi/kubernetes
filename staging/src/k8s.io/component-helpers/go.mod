@@ -5,7 +5,6 @@ module k8s.io/component-helpers
 go 1.20
 
 require (
-	// github.com/eppppi/k8s-object-carrier v0.0.0-20230920043619-75b21f2252f9
 	github.com/google/go-cmp v0.5.9
 	k8s.io/api v0.0.0
 	k8s.io/apimachinery v0.28.1

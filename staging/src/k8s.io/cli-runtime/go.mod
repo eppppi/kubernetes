@@ -5,7 +5,6 @@ module k8s.io/cli-runtime
 go 1.20
 
 require (
-	// github.com/eppppi/k8s-object-carrier v0.0.0-20230920043619-75b21f2252f9
 	github.com/evanphx/json-patch v5.6.0+incompatible
 	github.com/google/gnostic-models v0.6.8
 	github.com/google/go-cmp v0.5.9

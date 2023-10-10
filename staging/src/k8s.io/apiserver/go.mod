@@ -8,7 +8,6 @@ require (
 	github.com/coreos/go-oidc v2.2.1+incompatible
 	github.com/coreos/go-systemd/v22 v22.5.0
 	github.com/emicklei/go-restful/v3 v3.9.0
-	// github.com/eppppi/k8s-object-carrier v0.0.0-20230920043619-75b21f2252f9
 	github.com/evanphx/json-patch v5.6.0+incompatible
 	github.com/fsnotify/fsnotify v1.6.0
 	github.com/gogo/protobuf v1.3.2
