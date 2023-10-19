@@ -37,6 +37,7 @@ import (
 	"time"
 
 	k8scarrier "github.com/eppppi/k8s-object-carrier/carrier"
+	"go.opentelemetry.io/otel"
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -63,8 +64,6 @@ import (
 	"k8s.io/kubernetes/pkg/controller/replicaset/metrics"
 	"k8s.io/utils/integer"
 )
-
-const prefix = k8scarrier.KOC_PREFIX
 
 const (
 	// Realistic value of the burstReplica field for the replica set manager based off
@@ -153,11 +152,30 @@ func NewBaseController(logger klog.Logger, rsInformer appsinformers.ReplicaSetIn
 
 	// setup otel tracer
 	setupTracer()
+	// specifyResolverExplicitly()
+	writeResolvconf()
 
 	rsInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
-			// add trace stuff
-			DoSomething(context.Background(), "foo-value", "bar-value")
+			// extract span from k8s object (carrier)
+			carrier, err := k8scarrier.NewK8sAntCarrierFromInterface(obj)
+			if err == nil {
+				// extract the context from carrier
+				ctx := otel.GetTextMapPropagator().Extract(context.Background(), carrier)
+				// create child span
+				ctx, span := tracer.Start(ctx, "replicaset_controller_add")
+				defer span.End()
+				// record event
+				span.AddEvent("add event in RS")
+				// print RS
+				fmt.Println(obj.(*apps.ReplicaSet).GetAnnotations()[k8scarrier.KOC_KEY])
+				// Do something
+				DoSomething(ctx, "foo-value", "bar-value")
+				// debug
+				// debugPostTrace()
+				// catResolvconf()
+				// writeResolvconf()
+			}
 			rsc.addRS(logger, obj)
 		},
 		UpdateFunc: func(oldObj, newObj interface{}) {

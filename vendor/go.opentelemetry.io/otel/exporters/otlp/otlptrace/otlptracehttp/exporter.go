@@ -12,6 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package stdout contains an OpenTelemetry exporter for tracing
-// telemetry to be written to an output destination as JSON.
-package stdouttrace // import "go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
+package otlptracehttp // import "go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
+
+import (
+	"context"
+
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
+)
+
+// New constructs a new Exporter and starts it.
+func New(ctx context.Context, opts ...Option) (*otlptrace.Exporter, error) {
+	return otlptrace.New(ctx, NewClient(opts...))
+}
+
+// NewUnstarted constructs a new Exporter and does not start it.
+func NewUnstarted(opts ...Option) *otlptrace.Exporter {
+	return otlptrace.NewUnstarted(NewClient(opts...))
+}

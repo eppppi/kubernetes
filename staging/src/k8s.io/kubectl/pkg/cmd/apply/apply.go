@@ -22,10 +22,14 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/spf13/cobra"
+	"go.opentelemetry.io/otel"
+	// "go.opentelemetry.io/otel/propagation"
 	"sigs.k8s.io/structured-merge-diff/v4/fieldpath"
 
+	k8scarrier "github.com/eppppi/k8s-object-carrier/carrier"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -540,6 +544,7 @@ func (o *ApplyOptions) Run() error {
 			return err
 		}
 	}
+	time.Sleep(time.Second * 10)
 
 	return nil
 }
@@ -605,10 +610,27 @@ func (o *ApplyOptions) applyOneObject(info *resource.Info) error {
 		}
 	}
 
-	newInfoObj, err := createAndAppendTraceInfo(info.Object)
-	if err != nil {
-		info.Object = newInfoObj
-	}
+	// newInfoObj, err := createAndAppendTraceInfo(info.Object)
+	// if err != nil {
+	// 	info.Object = newInfoObj
+	// }
+	cleanup := setupTracer()
+	defer cleanup()
+
+	// create root span
+	ctx, span := tracer.Start(context.Background(), "kubectl-apply")
+	defer span.End()
+	// DoSomething(ctx, "foo", "bar")
+	// debugPostTrace()
+	// objectにコンテキストを登録
+	obj, _ := meta.Accessor(info.Object)
+	carrier, _ := k8scarrier.NewK8sAntCarrierFromObj(obj)
+	// _, _ = k8scarrier.NewK8sAntCarrierFromObj(obj)
+	propagator := otel.GetTextMapPropagator()
+	propagator.Inject(ctx, carrier) // ここでコンテキストが登録されるはず
+	// tmpMap := propagation.MapCarrier{}
+	// propagator.Inject(ctx, tmpMap) // ここでコンテキストが登録されるはずだが、登録されない
+	// fmt.Println(tmpMap)
 
 	helper := resource.NewHelper(info.Client, info.Mapping).
 		DryRun(o.DryRunStrategy == cmdutil.DryRunServer).

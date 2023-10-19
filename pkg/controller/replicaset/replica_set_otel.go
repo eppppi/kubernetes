@@ -4,17 +4,27 @@
 package replicaset
 
 import (
+	"bytes"
 	"context"
+	"fmt"
+	"io"
+	"net"
+	"net/http"
+	"os"
 	"time"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+
 	// "go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
-	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
+	// "go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
+	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
 	"go.opentelemetry.io/otel/trace"
+	// "google.golang.org/grpc"
 )
 
 // define tracer as global variable
@@ -34,20 +44,98 @@ func DoSomething(ctx context.Context, foo string, bar string) error {
 }
 
 func setupTracer() {
-	exporter, err := stdouttrace.New(stdouttrace.WithPrettyPrint())
+	exporter, err := setupOtlpExporter()
 	if err != nil {
 		panic(err)
 	}
 	res := resource.NewWithAttributes(
 		semconv.SchemaURL,
-		attribute.Key("service.namespace").String(serviceName),
+		// attribute.Key("service.namespace").String(serviceName),
+		attribute.Key("service.name").String(serviceName),
 	)
 	tp := sdktrace.NewTracerProvider(
 		sdktrace.WithResource(res),
 		sdktrace.WithBatcher(exporter),
 	)
+	otel.SetTextMapPropagator(propagation.TraceContext{})
 	otel.SetTracerProvider(tp)
 }
 
-// endpoint := "localhost:4317"
-// exporter, err := otlptracegrpc.New(ctx, otlptracegrpc.WithInsecure(), otlptracegrpc.WithEndpoint(endpoint), otlptracegrpc.WithDialOption(grpc.WithBlock()))
+// func setupStdoutExrpoter() (sdktrace.SpanExporter, error) {
+// 	return stdouttrace.New(stdouttrace.WithPrettyPrint())
+// }
+
+func setupOtlpExporter() (sdktrace.SpanExporter, error) {
+	endpoint := "jaeger.jaeger.svc.cluster.local:4318"
+	// return otlptracegrpc.New(context.Background(), otlptracegrpc.WithInsecure(), otlptracegrpc.WithEndpoint(endpoint))
+	return otlptracehttp.New(context.Background(), otlptracehttp.WithInsecure(), otlptracehttp.WithEndpoint(endpoint))
+	// return otlptracegrpc.New(context.Background(), otlptracegrpc.WithInsecure(), otlptracegrpc.WithEndpoint(endpoint), otlptracegrpc.WithDialOption(grpc.WithBlock()))
+}
+
+func debugPostTrace() {
+	jsonBody := `{"resourceSpans":[{"resource":{"attributes":[{"key":"service.name","value":{"stringValue":"test-with-curl"}}]},"scopeSpans":[{"scope":{"name":"manual-test"},"spans":[{"traceId":"71699b6fe85982c7c8995ea3d9c95df2","spanId":"3c191d03fa8be065","name":"spanitron","kind":2,"droppedAttributesCount":0,"events":[],"droppedEventsCount":0,"status":{"code":1}}]}]}]}`
+
+	fmt.Println("posting to jaeger")
+	resp, err := http.Post("http://jaeger.jaeger.svc.cluster.local:4318/v1/traces", "application/json", bytes.NewBuffer([]byte(jsonBody)))
+	if err != nil {
+		fmt.Println("post failed: ", err)
+		return
+	} else {
+		fmt.Println("post success: ", resp)
+	}
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+	fmt.Println(string(body))
+}
+
+func specifyResolverExplicitly() {
+	resolver := &net.Resolver{
+		PreferGo: true,
+		Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
+			d := net.Dialer{
+				Timeout: time.Millisecond * time.Duration(10000),
+			}
+			return d.DialContext(ctx, "udp", "10.96.0.10:53")
+		},
+	}
+
+	// Set resolver for HTTP client
+	http.DefaultTransport.(*http.Transport).DialContext = func(ctx context.Context, network, address string) (net.Conn, error) {
+		d := net.Dialer{
+			Timeout:  time.Millisecond * time.Duration(10000),
+			Resolver: resolver,
+		}
+		return d.DialContext(ctx, network, address)
+	}
+}
+
+func catResolvconf() {
+	data, err := os.ReadFile("/etc/resolv.conf")
+	if err != nil {
+		fmt.Println("failed to open resolv.conf: ", err)
+		return
+	}
+	fmt.Println(string(data))
+}
+
+func writeResolvconf() {
+	resolvconf := `search default.svc.cluster.local svc.cluster.local cluster.local
+nameserver 10.96.0.10
+options ndots:5
+`
+	fp, err := os.Create("/etc/resolv.conf")
+	if err != nil {
+		fmt.Println("failed to open resolv.conf: ", err)
+		return
+	}
+	defer fp.Close()
+	_, err = fp.Write([]byte(resolvconf))
+	if err != nil {
+		fmt.Println("failed to write resolv.conf: ", err)
+		return
+	}
+	fmt.Println("success to write resolv.conf")
+}
