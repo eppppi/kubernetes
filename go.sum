@@ -362,8 +362,8 @@ github.com/envoyproxy/go-control-plane v0.10.2-0.20220325020618-49ff273808a1/go.
 github.com/envoyproxy/go-control-plane v0.10.3/go.mod h1:fJJn/j26vwOu972OllsvAgJJM//w9BV6Fxbg2LuVd34=
 github.com/envoyproxy/protoc-gen-validate v0.1.0/go.mod h1:iSmxcyjqTsJpI2R4NaDN7+kN2VEUnK/pcBlmesArF7c=
 github.com/envoyproxy/protoc-gen-validate v0.9.1/go.mod h1:OKNgG7TCp5pF4d6XftA0++PMirau2/yoOwVac3AbF2w=
-github.com/eppppi/k8s-object-carrier v0.3.0 h1:gxj1+hUqH/ysbHc/ODCUHbzdf/PY1/rqeef6sScMKrU=
-github.com/eppppi/k8s-object-carrier v0.3.0/go.mod h1:KKfKDAn3YpbDg6QYqsjOZNKs1hEqGy3DnmC+AL2ClP4=
+github.com/eppppi/k8s-object-carrier v0.4.0 h1:TZ5U2zjmZ3YuXapU/jx9OHQ4w1mB4wshqHHiBz+LVmE=
+github.com/eppppi/k8s-object-carrier v0.4.0/go.mod h1:KKfKDAn3YpbDg6QYqsjOZNKs1hEqGy3DnmC+AL2ClP4=
 github.com/euank/go-kmsg-parser v2.0.0+incompatible h1:cHD53+PLQuuQyLZeriD1V/esuG4MuU0Pjs5y6iknohY=
 github.com/euank/go-kmsg-parser v2.0.0+incompatible/go.mod h1:MhmAMZ8V4CYH4ybgdRwPr2TU5ThnS43puaKEMpja1uw=
 github.com/evanphx/json-patch v5.6.0+incompatible h1:jBYDEEiFBPxA0v50tFdvOzQQTCvpL6mnFh5mB2/l16U=

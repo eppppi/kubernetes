@@ -38,6 +38,8 @@ import (
 
 	k8scarrier "github.com/eppppi/k8s-object-carrier/carrier"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -77,6 +79,8 @@ const (
 	// which is to index by ReplicaSet's controllerUID.
 	controllerUIDIndex = "controllerUID"
 )
+
+var tracer = otel.Tracer("koc-trace-cm")
 
 // ReplicaSetController is responsible for synchronizing ReplicaSet objects stored
 // in the system with actual running pods.
@@ -151,9 +155,9 @@ func NewBaseController(logger klog.Logger, rsInformer appsinformers.ReplicaSetIn
 	}
 
 	// setup otel tracer
-	setupTracer()
+	// setupTracer()
 	// specifyResolverExplicitly()
-	writeResolvconf()
+	// writeResolvconf()
 
 	rsInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
@@ -163,18 +167,14 @@ func NewBaseController(logger klog.Logger, rsInformer appsinformers.ReplicaSetIn
 				// extract the context from carrier
 				ctx := otel.GetTextMapPropagator().Extract(context.Background(), carrier)
 				// create child span
-				ctx, span := tracer.Start(ctx, "replicaset_controller_add")
+				_, span := tracer.Start(ctx, "rs-is-added-in-rscon")
 				defer span.End()
 				// record event
 				span.AddEvent("add event in RS")
 				// print RS
 				fmt.Println(obj.(*apps.ReplicaSet).GetAnnotations()[k8scarrier.KOC_KEY])
 				// Do something
-				DoSomething(ctx, "foo-value", "bar-value")
-				// debug
-				// debugPostTrace()
-				// catResolvconf()
-				// writeResolvconf()
+				// DoSomething(ctx, "foo-value", "bar-value")
 			}
 			rsc.addRS(logger, obj)
 		},
@@ -622,6 +622,9 @@ func (rsc *ReplicaSetController) manageReplicas(ctx context.Context, filteredPod
 		// after one of its pods fails.  Conveniently, this also prevents the
 		// event spam that those failures would generate.
 		successfulCreations, err := slowStartBatch(diff, controller.SlowStartInitialBatchSize, func() error {
+			// EPPPPI: start span for each pod creation
+			ctx, span := tracer.Start(ctx, "create-pod-in-rscon", trace.WithAttributes(attribute.String("controller-name", "ReplicaSet")))
+			defer span.End()
 			err := rsc.podControl.CreatePods(ctx, rs.Namespace, &rs.Spec.Template, rs, metav1.NewControllerRef(rs, rsc.GroupVersionKind))
 			if err != nil {
 				if apierrors.HasStatusCause(err, v1.NamespaceTerminatingCause) {
@@ -711,6 +714,9 @@ func (rsc *ReplicaSetController) syncReplicaSet(ctx context.Context, key string)
 		return err
 	}
 	rs, err := rsc.rsLister.ReplicaSets(namespace).Get(name)
+	// EPPPPI-NOTE: extract trace contexts here
+	carrier, err := k8scarrier.NewK8sAntCarrierFromInterface(rs)
+	ctx = otel.GetTextMapPropagator().Extract(context.Background(), carrier)
 	if apierrors.IsNotFound(err) {
 		logger.V(4).Info("deleted", "kind", rsc.Kind, "key", key)
 		rsc.expectations.DeleteExpectations(logger, key)

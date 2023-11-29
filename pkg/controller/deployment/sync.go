@@ -23,6 +23,9 @@ import (
 	"sort"
 	"strconv"
 
+	k8scarrier "github.com/eppppi/k8s-object-carrier/carrier"
+	"go.opentelemetry.io/otel"
+	// "go.opentelemetry.io/otel/propagation"
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -213,6 +216,14 @@ func (dc *DeploymentController) getNewReplicaSet(ctx context.Context, d *apps.De
 	if err != nil {
 		return nil, err
 	}
+	// EPPPPI
+	annotations := newRS.GetAnnotations()
+	if annotations == nil {
+		newRS.SetAnnotations(map[string]string{})
+	}
+	carrier := k8scarrier.NewK8sAntCarrier2FromObj(newRS.Annotations)
+	// EPPPPI: ここでDepのTraceをRSに引き継ぐ
+	otel.GetTextMapPropagator().Inject(ctx, carrier)
 
 	*(newRS.Spec.Replicas) = newReplicasCount
 	// Set new replica set's annotation

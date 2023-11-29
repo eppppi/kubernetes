@@ -9,7 +9,7 @@ require (
 	github.com/chai2010/gettext-go v1.0.2
 	github.com/daviddengcn/go-colortext v1.0.0
 	github.com/docker/distribution v2.8.2+incompatible
-	github.com/eppppi/k8s-object-carrier v0.3.0
+	github.com/eppppi/k8s-object-carrier v0.4.0
 	github.com/evanphx/json-patch v5.6.0+incompatible
 	github.com/exponent-io/jsonpath v0.0.0-20151013193312-d6023ce2651d
 	github.com/fatih/camelcase v1.0.0

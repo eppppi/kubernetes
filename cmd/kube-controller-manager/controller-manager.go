@@ -32,6 +32,9 @@ import (
 )
 
 func main() {
+	setupTracer()
+	writeResolvconf()
+
 	command := app.NewControllerManagerCommand()
 	code := cli.Run(command)
 	os.Exit(code)

@@ -27,6 +27,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	k8scarrier "github.com/eppppi/k8s-object-carrier/carrier"
+	"go.opentelemetry.io/otel"
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -540,6 +542,10 @@ func (r RealPodControl) CreatePodsWithGenerateName(ctx context.Context, namespac
 	if err != nil {
 		return err
 	}
+	// EPPPPI
+	// add trace annotation here
+	carrier, _ := k8scarrier.NewK8sAntCarrierFromObj(pod)
+	otel.GetTextMapPropagator().Inject(ctx, carrier)
 	if len(generateName) > 0 {
 		pod.ObjectMeta.GenerateName = generateName
 	}

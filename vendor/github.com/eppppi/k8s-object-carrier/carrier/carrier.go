@@ -17,6 +17,7 @@ const KOC_KEY = "eppppi.github.io/koc"
 // }
 
 // OpenTelemetry carrier using annotation of kubernetes object
+// TODO: metav1.Objectだけじゃなくてruntime.Object(?)(ReplicaSetとか)でもいいようにしたい
 type K8sObjAntCarrier struct {
 	metav1.Object
 }
@@ -83,6 +84,82 @@ func (objCarrier *K8sObjAntCarrier) Set(key string, value string) {
 func (objCarrier *K8sObjAntCarrier) Keys() []string {
 	annotations := objCarrier.GetAnnotations()
 	if ctxs, ok := annotations[KOC_KEY]; ok {
+		var mapCtxs map[string]string
+		err := json.Unmarshal([]byte(ctxs), &mapCtxs)
+		if err != nil {
+			log.Printf("warning: unmarshal error: %v", err)
+			return []string{}
+		}
+		keys := make([]string, 0, len(mapCtxs))
+		for k := range mapCtxs {
+			keys = append(keys, k)
+		}
+		return keys
+	} else {
+		return []string{}
+	}
+}
+
+// -----
+
+type K8sObjAntCarrier2 struct {
+	annotation map[string]string
+}
+
+func NewK8sAntCarrier2FromObj(mp map[string]string) *K8sObjAntCarrier2 {
+	return &K8sObjAntCarrier2{mp}
+}
+
+func (objCarrier *K8sObjAntCarrier2) Get(key string) string {
+	// annotations := objCarrier.GetAnnotations()
+	if ctxs, ok := objCarrier.annotation[KOC_KEY]; ok {
+		var mapCtxs map[string]string
+		err := json.Unmarshal([]byte(ctxs), &mapCtxs)
+		if err != nil {
+			log.Printf("warning: unmarshal error: %v", err)
+			return ""
+		}
+		if ctx, ok := mapCtxs[key]; ok {
+			return ctx
+		} else {
+			log.Printf("warning: key %s is not found", key)
+			return ""
+		}
+	} else {
+		log.Println("no trace context in this object")
+		return ""
+	}
+}
+
+func (objCarrier *K8sObjAntCarrier2) Set(key string, value string) {
+	// annotations := objCarrier.GetAnnotations()
+	// if annotations == nil {
+	// 	annotations = make(map[string]string)
+	// }
+	var mapCtxs map[string]string
+	if ctxs, ok := objCarrier.annotation[KOC_KEY]; ok {
+		// ctxsが存在する時、既存のctxsを取得してkey-valueを追加する
+		err := json.Unmarshal([]byte(ctxs), &mapCtxs)
+		if err != nil {
+			log.Printf("warning: unmarshal error: %v", err)
+			return
+		}
+	} else {
+		// ctxsが存在しない時、新しいctxsを作成してkey-valueを追加する
+		mapCtxs = make(map[string]string)
+	}
+	mapCtxs[key] = value
+	ctxsString, err := json.Marshal(mapCtxs)
+	if err != nil {
+		log.Printf("warning: marshal error: %v", err)
+	}
+	objCarrier.annotation[KOC_KEY] = string(ctxsString)
+	// objCarrier.SetAnnotations(annotations)
+}
+
+func (objCarrier *K8sObjAntCarrier2) Keys() []string {
+	// annotations := objCarrier.GetAnnotations()
+	if ctxs, ok := objCarrier.annotation[KOC_KEY]; ok {
 		var mapCtxs map[string]string
 		err := json.Unmarshal([]byte(ctxs), &mapCtxs)
 		if err != nil {
