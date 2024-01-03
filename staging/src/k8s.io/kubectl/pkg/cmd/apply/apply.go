@@ -51,6 +51,8 @@ import (
 	"k8s.io/kubectl/pkg/util/slice"
 	"k8s.io/kubectl/pkg/util/templates"
 	"k8s.io/kubectl/pkg/validation"
+
+	k8scpdtinst "github.com/eppppi/k8s-cp-dt/instrumentation"
 )
 
 // ApplyFlags directly reflect the information that CLI is gathering via flags.  They will be converted to Options, which
@@ -486,6 +488,7 @@ func (o *ApplyOptions) SetObjects(infos []*resource.Info) {
 
 // Run executes the `apply` command.
 func (o *ApplyOptions) Run() error {
+	fmt.Println("EPPPPI: here is the ApplyOptions.Run()")
 	if o.PreProcessorFn != nil {
 		klog.V(4).Infof("Running apply pre-processor function")
 		if err := o.PreProcessorFn(); err != nil {
@@ -542,6 +545,17 @@ func (o *ApplyOptions) Run() error {
 
 func (o *ApplyOptions) applyOneObject(info *resource.Info) error {
 	o.MarkNamespaceVisited(info)
+
+	// TODO: instrument
+	// generate CPID
+	instrumentation
+
+	// inject the CPID to the object
+
+	// send root mergelog
+
+	// report the CPID to the user
+	defer fmt.Println("EPPPPI: ")
 
 	if err := o.Recorder.Record(info.Object); err != nil {
 		klog.V(4).Infof("error recording current command: %v", err)
@@ -653,7 +667,7 @@ See https://kubernetes.io/docs/reference/using-api/server-side-apply/#conflicts`
 			return err
 		}
 		return nil
-	}
+	} // EPPPPI-MEMO: end of server-side apply
 
 	// Get the modified configuration of the object. Embed the result
 	// as an annotation in the modified configuration, so that it will appear
@@ -676,7 +690,8 @@ See https://kubernetes.io/docs/reference/using-api/server-side-apply/#conflicts`
 
 		if o.DryRunStrategy != cmdutil.DryRunClient {
 			// Then create the resource and skip the three-way merge
-			obj, err := helper.Create(info.Namespace, true, info.Object)
+			fmt.Println("EPPPPI: creating", info.ObjectName())
+			obj, err := helper.Create(info.Namespace, true, info.Object) // EPPPPPI-MEMO: create the Object
 			if err != nil {
 				return cmdutil.AddSourceToErr("creating", info.Source, err)
 			}
