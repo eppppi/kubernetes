@@ -23,8 +23,8 @@ import (
 	"sort"
 	"strconv"
 
-	k8scarrier "github.com/eppppi/k8s-object-carrier/carrier"
-	"go.opentelemetry.io/otel"
+	// k8scarrier "github.com/eppppi/k8s-object-carrier/carrier"
+	// "go.opentelemetry.io/otel"
 	// "go.opentelemetry.io/otel/propagation"
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
@@ -34,6 +34,8 @@ import (
 	"k8s.io/kubernetes/pkg/controller"
 	deploymentutil "k8s.io/kubernetes/pkg/controller/deployment/util"
 	labelsutil "k8s.io/kubernetes/pkg/util/labels"
+
+	k8scpdtinst "github.com/eppppi/k8s-cp-dt/instrumentation"
 )
 
 // syncStatusOnly only updates Deployments Status and doesn't take any mutating actions.
@@ -216,14 +218,19 @@ func (dc *DeploymentController) getNewReplicaSet(ctx context.Context, d *apps.De
 	if err != nil {
 		return nil, err
 	}
-	// EPPPPI
-	annotations := newRS.GetAnnotations()
-	if annotations == nil {
-		newRS.SetAnnotations(map[string]string{})
-	}
-	carrier := k8scarrier.NewK8sAntCarrier2FromObj(newRS.Annotations)
-	// EPPPPI: ここでDepのTraceをRSに引き継ぐ
-	otel.GetTextMapPropagator().Inject(ctx, carrier)
+	// // EPPPPI
+	// annotations := newRS.GetAnnotations()
+	// if annotations == nil {
+	// 	newRS.SetAnnotations(map[string]string{})
+	// }
+	// carrier := k8scarrier.NewK8sAntCarrier2FromObj(newRS.Annotations)
+	// // EPPPPI: ここでDepのTraceをRSに引き継ぐ
+	// otel.GetTextMapPropagator().Inject(ctx, carrier)
+
+	// EPPPPI: take over the trace context from the Deployment to ReplicaSet because the ReplicaSet is newly created.
+	// tctx := k8scpdtinst.GetTraceContext(d)
+	// k8scpdtinst.SetTraceContext(newRS, tctx)
+	_ = k8scpdtinst.Span{}
 
 	*(newRS.Spec.Replicas) = newReplicasCount
 	// Set new replica set's annotation

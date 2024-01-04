@@ -617,17 +617,17 @@ func (dc *DeploymentController) syncDeployment(ctx context.Context, key string) 
 	if err != nil {
 		return err
 	}
-	// EPPPPI: extract
-	carrier, err := k8scarrier.NewK8sAntCarrierFromInterface(deployment)
-	if err != nil {
-		fmt.Println(err)
-	}
-	ctx = otel.GetTextMapPropagator().Extract(context.Background(), carrier)
-	// create child span
-	ctx, span := tracer.Start(ctx, "creating-rs-in-depcon")
-	defer span.End()
-	// record event
-	span.AddEvent("RS is added in DepCon")
+	// // EPPPPI: extract
+	// carrier, err := k8scarrier.NewK8sAntCarrierFromInterface(deployment)
+	// if err != nil {
+	// 	fmt.Println(err)
+	// }
+	// ctx = otel.GetTextMapPropagator().Extract(context.Background(), carrier)
+	// // create child span
+	// ctx, span := tracer.Start(ctx, "creating-rs-in-depcon")
+	// defer span.End()
+	// // record event
+	// span.AddEvent("RS is added in DepCon")
 
 	// Deep-copy otherwise we are mutating our cache.
 	// TODO: Deep-copy only when needed.

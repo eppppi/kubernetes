@@ -18,20 +18,14 @@ package apply
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"time"
 
 	"github.com/spf13/cobra"
-	"go.opentelemetry.io/otel"
-	// "go.opentelemetry.io/otel/propagation"
 	"sigs.k8s.io/structured-merge-diff/v4/fieldpath"
 
-	k8scarrier "github.com/eppppi/k8s-object-carrier/carrier"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -60,7 +54,7 @@ import (
 	"k8s.io/kubectl/pkg/util/templates"
 	"k8s.io/kubectl/pkg/validation"
 
-	k8sannotation "github.com/eppppi/k8s-object-carrier/annotation"
+	k8scpdtinst "github.com/eppppi/k8s-cp-dt/instrumentation"
 )
 
 // ApplyFlags directly reflect the information that CLI is gathering via flags.  They will be converted to Options, which
@@ -525,6 +519,13 @@ func (o *ApplyOptions) Run() error {
 		}
 	}
 
+	// init grpc client
+	doneCh := make(chan struct{})
+	k8scpdtinst.InitSender(doneCh, "localhost:9000")
+	defer func() {
+		doneCh <- struct{}{}
+	}()
+
 	// Iterate through all objects, applying each one.
 	for _, info := range infos {
 		if err := o.applyOneObject(info); err != nil {
@@ -551,52 +552,6 @@ func (o *ApplyOptions) Run() error {
 	return nil
 }
 
-// EPPPPI-TODO
-func metav1ObjToRuntimeObj(metav1Obj metav1.Object) (runtime.Object, error) {
-	return nil, nil
-}
-
-// EPPPPI-TODO
-func createAndAppendTraceInfo(infoObj runtime.Object) (runtime.Object, error) {
-	// info.Objectからmetav1.Objectに変換
-	obj, err := meta.Accessor(infoObj)
-	if err != nil {
-		return nil, fmt.Errorf("cannot convert to metav1.Object")
-	}
-
-	// アノテーションを生成 & オブジェクトに追加
-	annotations := obj.GetAnnotations()
-	if annotations == nil {
-		annotations = make(map[string]string)
-	}
-
-	k8sCtx := k8sannotation.NewRootContext()
-	fmt.Println(k8sCtx.String())
-
-	k8sCtxs := k8sannotation.ObjContexts{k8sCtx}
-	k8sCtxs = append(k8sCtxs, k8sannotation.NewRootContext())
-	fmt.Println(k8sCtxs.String())
-	k8sCtxsJson, err := json.Marshal(k8sCtxs)
-	if err != nil {
-		return nil, err
-	}
-	fmt.Println(string(k8sCtxsJson))
-	annotations["k8s-trace.eppppi.github.com/contexts"] = string(k8sCtxsJson)
-
-	obj.SetAnnotations(annotations)
-
-	// metav1.Objectからinfo.Objectに再変換
-	newInfoObj, err := metav1ObjToRuntimeObj(obj)
-	if err != nil {
-		return nil, err
-	}
-
-	fmt.Println("applied!!!!!!!!!!!!!!!!  IN STAGING !!!!!!!!!!!!!!!!!!")
-
-	return newInfoObj, nil
-
-}
-
 func (o *ApplyOptions) applyOneObject(info *resource.Info) error {
 	o.MarkNamespaceVisited(info)
 
@@ -611,23 +566,6 @@ func (o *ApplyOptions) applyOneObject(info *resource.Info) error {
 			return fmt.Errorf("from %s: cannot use generate name with apply", generatedName)
 		}
 	}
-
-	// newInfoObj, err := createAndAppendTraceInfo(info.Object)
-	// if err != nil {
-	// 	info.Object = newInfoObj
-	// }
-	cleanup := setupTracer()
-	defer cleanup()
-
-	// create root span
-	ctx, span := tracer.Start(context.Background(), "kubectl-apply", trace.WithAttributes(attribute.String("controller-name", "kubectl-apply")))
-	defer span.End()
-	// objectにコンテキストを登録
-	obj, _ := meta.Accessor(info.Object)
-	carrier, _ := k8scarrier.NewK8sAntCarrierFromObj(obj)
-	// _, _ = k8scarrier.NewK8sAntCarrierFromObj(obj)
-	propagator := otel.GetTextMapPropagator()
-	propagator.Inject(ctx, carrier) // ここでコンテキストが登録されるはず
 
 	helper := resource.NewHelper(info.Client, info.Mapping).
 		DryRun(o.DryRunStrategy == cmdutil.DryRunServer).
@@ -728,7 +666,7 @@ See https://kubernetes.io/docs/reference/using-api/server-side-apply/#conflicts`
 			return err
 		}
 		return nil
-	}
+	} // EPPPPI-NOTE: end of serverside-apply
 
 	// Get the modified configuration of the object. Embed the result
 	// as an annotation in the modified configuration, so that it will appear
@@ -738,10 +676,27 @@ See https://kubernetes.io/docs/reference/using-api/server-side-apply/#conflicts`
 		return cmdutil.AddSourceToErr(fmt.Sprintf("retrieving modified configuration from:\n%s\nfor:", info.String()), info.Source, err)
 	}
 
-	if err := info.Get(); err != nil {
+	// EPPPPI-NOTE: case: object does not exist
+	if err := info.Get(); err != nil { // EPPPPI-NOTE: すでにそのオブジェクトがある場合、info.Get()は前のオブジェクトをinfo.Objectに入れる。オブジェクトがない場合はinfo.Objectは置き換えられない。
 		if !errors.IsNotFound(err) {
 			return cmdutil.AddSourceToErr(fmt.Sprintf("retrieving current configuration of:\n%s\nfrom server for:", info.String()), info.Source, err)
 		}
+
+		// EPPPPI-NOTE: ここではユーザから与えられた新しいオブジェクトが入っている。
+		// generate cpid
+		cpid, err := k8scpdtinst.GenerateCpid()
+		if err != nil {
+			fmt.Println(err)
+		}
+		// inject the cpid to the object
+		tctx := k8scpdtinst.GetTraceContext(info.Object)
+		fmt.Println("current CPID is:", tctx.GetCpid())
+		srcCpids := []string{tctx.GetCpid()}
+		tctx.SetCpid(cpid)
+		k8scpdtinst.SetTraceContext(info.Object, tctx)
+		k8scpdtinst.GenerateAndSendMergelog(cpid, srcCpids, "apply", "kubectl")
+		// report the generated cpid
+		defer fmt.Println("CPID of this change:", cpid)
 
 		// Create the resource if it doesn't exist
 		// First, update the annotation used by kubectl apply
@@ -780,7 +735,25 @@ See https://kubernetes.io/docs/reference/using-api/server-side-apply/#conflicts`
 		return err
 	}
 
+	// EPPPPI-NOTE: case: object already exists
 	if o.DryRunStrategy != cmdutil.DryRunClient {
+
+		// EPPPPI-NOTE: この時点ではinfo.Objectには前のオブジェクトが入ってる。じゃあユーザから与えられた新しいオブジェクトはどこにあるの？
+		// generate cpid
+		cpid, err := k8scpdtinst.GenerateCpid()
+		if err != nil {
+			fmt.Println(err)
+		}
+		// inject the cpid to the object
+		tctx := k8scpdtinst.GetTraceContext(info.Object)
+		fmt.Println("current CPID is:", tctx.GetCpid())
+		srcCpids := []string{tctx.GetCpid()}
+		tctx.SetCpid(cpid)
+		k8scpdtinst.SetTraceContext(info.Object, tctx)
+		k8scpdtinst.GenerateAndSendMergelog(cpid, srcCpids, "apply", "kubectl")
+		// report the generated cpid
+		defer fmt.Println("CPID of this change:", cpid)
+
 		metadata, _ := meta.Accessor(info.Object)
 		annotationMap := metadata.GetAnnotations()
 		if _, ok := annotationMap[corev1.LastAppliedConfigAnnotation]; !ok {
