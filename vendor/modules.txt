@@ -199,7 +199,7 @@ github.com/dustin/go-humanize
 ## explicit; go 1.13
 github.com/emicklei/go-restful/v3
 github.com/emicklei/go-restful/v3/log
-# github.com/eppppi/k8s-cp-dt v0.1.1 => github.com/eppppi/k8s-cp-dt v0.1.8
+# github.com/eppppi/k8s-cp-dt v0.1.8
 ## explicit; go 1.21
 github.com/eppppi/k8s-cp-dt/instrumentation
 github.com/eppppi/k8s-cp-dt/mergelog/src/pkg/grpc
@@ -2571,7 +2571,6 @@ sigs.k8s.io/structured-merge-diff/v4/value
 # sigs.k8s.io/yaml v1.3.0
 ## explicit; go 1.12
 sigs.k8s.io/yaml
-# github.com/eppppi/k8s-cp-dt => github.com/eppppi/k8s-cp-dt v0.1.8
 # github.com/eppppi/k8s-object-carrier => github.com/eppppi/k8s-object-carrier v0.4.0
 # go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp => go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.35.1
 # go.opentelemetry.io/otel => go.opentelemetry.io/otel v1.10.0

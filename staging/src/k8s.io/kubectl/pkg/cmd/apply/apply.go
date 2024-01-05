@@ -74,6 +74,7 @@ type ApplyFlags struct {
 	All            bool
 	Overwrite      bool
 	OpenAPIPatch   bool
+	Trace          bool
 
 	// DEPRECATED: Use PruneAllowlist instead
 	PruneWhitelist []string // TODO: Remove this in kubectl 1.28 or later
@@ -102,6 +103,7 @@ type ApplyOptions struct {
 	All             bool
 	Overwrite       bool
 	OpenAPIPatch    bool
+	Trace           bool
 
 	ValidationDirective string
 	Validator           validation.Schema
@@ -191,6 +193,7 @@ func NewApplyFlags(streams genericiooptions.IOStreams) *ApplyFlags {
 
 		Overwrite:    true,
 		OpenAPIPatch: true,
+		Trace:        false, // default value
 
 		IOStreams: streams,
 	}
@@ -240,6 +243,7 @@ func (flags *ApplyFlags) AddFlags(cmd *cobra.Command) {
 
 	cmd.Flags().BoolVar(&flags.Overwrite, "overwrite", flags.Overwrite, "Automatically resolve conflicts between the modified and live configuration by using values from the modified configuration")
 	cmd.Flags().BoolVar(&flags.OpenAPIPatch, "openapi-patch", flags.OpenAPIPatch, "If true, use openapi to calculate diff when the openapi presents and the resource can be found in the openapi spec. Otherwise, fall back to use baked-in types.")
+	cmd.Flags().BoolVar(&flags.Trace, "trace", flags.Trace, "If true, add trace context to the objects and create mergelog.")
 }
 
 // ToOptions converts from CLI inputs to runtime inputs
@@ -354,6 +358,7 @@ func (flags *ApplyFlags) ToOptions(f cmdutil.Factory, cmd *cobra.Command, baseNa
 		All:             flags.All,
 		Overwrite:       flags.Overwrite,
 		OpenAPIPatch:    flags.OpenAPIPatch,
+		Trace:           flags.Trace,
 
 		Recorder:            recorder,
 		Namespace:           namespace,
@@ -520,11 +525,13 @@ func (o *ApplyOptions) Run() error {
 	}
 
 	// init grpc client
-	doneCh := make(chan struct{})
-	k8scpdtinst.InitSender(doneCh, "localhost:9000")
-	defer func() {
-		doneCh <- struct{}{}
-	}()
+	if o.Trace {
+		doneCh := make(chan struct{})
+		k8scpdtinst.InitSender(doneCh, "localhost:9000")
+		defer func() {
+			doneCh <- struct{}{}
+		}()
+	}
 
 	// Iterate through all objects, applying each one.
 	for _, info := range infos {
@@ -683,20 +690,22 @@ See https://kubernetes.io/docs/reference/using-api/server-side-apply/#conflicts`
 		}
 
 		// EPPPPI-NOTE: ここではユーザから与えられた新しいオブジェクトが入っている。
-		// generate cpid
-		cpid, err := k8scpdtinst.GenerateCpid()
-		if err != nil {
-			fmt.Println(err)
+		if o.Trace {
+			// generate cpid
+			cpid, err := k8scpdtinst.GenerateCpid()
+			if err != nil {
+				fmt.Println(err)
+			}
+			// inject the cpid to the object
+			tctx := k8scpdtinst.GetTraceContext(info.Object)
+			fmt.Println("current CPID is:", tctx.GetCpid())
+			srcCpids := []string{tctx.GetCpid()}
+			tctx.SetCpid(cpid)
+			k8scpdtinst.SetTraceContext(info.Object, tctx)
+			k8scpdtinst.GenerateAndSendMergelog(cpid, srcCpids, "apply (create)", "kubectl")
+			// report the generated cpid
+			defer fmt.Println("CPID of this change:", cpid)
 		}
-		// inject the cpid to the object
-		tctx := k8scpdtinst.GetTraceContext(info.Object)
-		fmt.Println("current CPID is:", tctx.GetCpid())
-		srcCpids := []string{tctx.GetCpid()}
-		tctx.SetCpid(cpid)
-		k8scpdtinst.SetTraceContext(info.Object, tctx)
-		k8scpdtinst.GenerateAndSendMergelog(cpid, srcCpids, "apply", "kubectl")
-		// report the generated cpid
-		defer fmt.Println("CPID of this change:", cpid)
 
 		// Create the resource if it doesn't exist
 		// First, update the annotation used by kubectl apply
@@ -738,21 +747,23 @@ See https://kubernetes.io/docs/reference/using-api/server-side-apply/#conflicts`
 	// EPPPPI-NOTE: case: object already exists
 	if o.DryRunStrategy != cmdutil.DryRunClient {
 
-		// EPPPPI-NOTE: この時点ではinfo.Objectには前のオブジェクトが入ってる。じゃあユーザから与えられた新しいオブジェクトはどこにあるの？
-		// generate cpid
-		cpid, err := k8scpdtinst.GenerateCpid()
-		if err != nil {
-			fmt.Println(err)
+		// EPPPPI-NOTE: この時点ではinfo.Objectには前のオブジェクトが入ってる。
+		if o.Trace {
+			// generate cpid
+			cpid, err := k8scpdtinst.GenerateCpid()
+			if err != nil {
+				fmt.Println(err)
+			}
+			// inject the cpid to the object
+			tctx := k8scpdtinst.GetTraceContext(info.Object)
+			fmt.Println("current CPID is:", tctx.GetCpid())
+			srcCpids := []string{tctx.GetCpid()}
+			tctx.SetCpid(cpid)
+			k8scpdtinst.SetTraceContext(info.Object, tctx)
+			k8scpdtinst.GenerateAndSendMergelog(cpid, srcCpids, "apply (change)", "kubectl")
+			// report the generated cpid
+			defer fmt.Println("CPID of this change:", cpid)
 		}
-		// inject the cpid to the object
-		tctx := k8scpdtinst.GetTraceContext(info.Object)
-		fmt.Println("current CPID is:", tctx.GetCpid())
-		srcCpids := []string{tctx.GetCpid()}
-		tctx.SetCpid(cpid)
-		k8scpdtinst.SetTraceContext(info.Object, tctx)
-		k8scpdtinst.GenerateAndSendMergelog(cpid, srcCpids, "apply", "kubectl")
-		// report the generated cpid
-		defer fmt.Println("CPID of this change:", cpid)
 
 		metadata, _ := meta.Accessor(info.Object)
 		annotationMap := metadata.GetAnnotations()
