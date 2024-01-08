@@ -530,7 +530,7 @@ func (o *ApplyOptions) Run() error {
 	// TODO: REFACTOR: currently, sender hangs if there is no receiver
 	// init grpc client
 	if o.Trace {
-		setupDoneCh, cancel := k8scpdtinst.InitSender("localhost:9000")
+		setupDoneCh, cancel := k8scpdtinst.InitSender("localhost:9000", 5*time.Second)
 		defer cancel()
 		<-setupDoneCh
 	}

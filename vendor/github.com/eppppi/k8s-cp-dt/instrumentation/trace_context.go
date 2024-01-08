@@ -67,23 +67,35 @@ func newTraceContext(cpid string, ancCpids []string) *TraceContext {
 }
 
 // GetCpid gets cpid
-func (tc *TraceContext) GetCpid() string {
-	return tc.Cpid
+func (tctx *TraceContext) GetCpid() string {
+	if tctx == nil {
+		return ""
+	}
+	return tctx.Cpid
 }
 
 // SetCpid sets cpid
-func (tc *TraceContext) SetCpid(cpid string) {
-	tc.Cpid = cpid
+func (tctx *TraceContext) SetCpid(cpid string) {
+	if tctx == nil {
+		return
+	}
+	tctx.Cpid = cpid
 }
 
 // GetAncCpids gets ancestor cpids
-func (tc *TraceContext) GetAncCpids() []string {
-	return tc.AncCpids
+func (tctx *TraceContext) GetAncCpids() []string {
+	if tctx == nil {
+		return nil
+	}
+	return tctx.AncCpids
 }
 
 // SetAncCpids sets ancestor cpids
-func (tc *TraceContext) SetAncCpids(ancCpids []string) {
-	tc.AncCpids = ancCpids
+func (tctx *TraceContext) SetAncCpids(ancCpids []string) {
+	if tctx == nil {
+		return
+	}
+	tctx.AncCpids = ancCpids
 }
 
 // GenerateCpid generates a cpid

@@ -229,14 +229,11 @@ func (dc *DeploymentController) getNewReplicaSet(ctx context.Context, d *apps.De
 
 	// EPPPPI: take over the trace context from the Deployment to ReplicaSet because the ReplicaSet is newly created.
 	depTctx := k8scpdtinst.GetTraceContext(d)
-	logger.V(4).Info("EPPPPI-DEBUG", "depTctx.Cpid", depTctx.Cpid)
-	rsTctx := k8scpdtinst.GetTraceContext(newRS)
-	logger.V(4).Info("EPPPPI-DEBUG", "rsTctx.Cpid", rsTctx.Cpid)
-	if depTctx.Cpid != rsTctx.Cpid {
-	} else {
-		k8scpdtinst.SetTraceContext(newRS, depTctx)
+	logger.V(4).Info("EPPPPI-DEBUG", "depTctx.Cpid", depTctx.GetCpid())
+	err = k8scpdtinst.SetTraceContext(newRS, depTctx)
+	if err != nil {
+		klog.V(4).Info("EPPPPI-DEBUG SetTraceContext() failed", "err", err)
 	}
-	// _ = k8scpdtinst.Span{}
 
 	*(newRS.Spec.Replicas) = newReplicasCount
 	// Set new replica set's annotation

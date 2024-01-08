@@ -42,13 +42,13 @@ const (
 
 // InitSender initializes a sender (gRPC client).
 // If wait is true, this func waits until setup is done.
-func InitSender(endpoint string) (<-chan error, func()) {
+func InitSender(endpoint string, timeout time.Duration) (<-chan error, func()) {
 	doneCh := make(chan struct{})
 	spanCh = make(chan *mergelogpb.Span, CHANNEL_SIZE)
 	mergelogCh = make(chan *mergelogpb.Mergelog, CHANNEL_SIZE)
 	setupDoneCh := make(chan error)
 	finishCh := make(chan struct{})
-	go runSender(doneCh, endpoint, spanCh, mergelogCh, setupDoneCh, finishCh)
+	go runSender(doneCh, endpoint, spanCh, mergelogCh, setupDoneCh, finishCh, timeout)
 
 	return setupDoneCh, func() {
 		doneCh <- struct{}{}
@@ -109,6 +109,8 @@ func MergeAndSendMergelog(newTctx *TraceContext, sourceTctxs []*TraceContext, ca
 
 // generateNewTctxAndSendMergelog generates a new trace context. if retTctx is nil, no mergelog is sent.
 func mergeAndSendMergelog(newTctx *TraceContext, sourceTctxs []*TraceContext, causeMsg, by string) (*TraceContext, error) {
+	log.Println("EPPPPI-DEBUG: mergeAndSendMergelog() started")
+	defer log.Println("EPPPPI-DEBUG: mergeAndSendMergelog() ended")
 	// validate arguments
 	if err := newTctx.validateTctx(); err != nil {
 		return nil, err
@@ -140,12 +142,15 @@ func mergeAndSendMergelog(newTctx *TraceContext, sourceTctxs []*TraceContext, ca
 
 // GenerateAndSendMergelog generates a mergelog and push it to channel
 func sendMergelog(newCpid string, sourceCpids []string, causeType mergelogpb.CauseType, causeMsg, by string) error {
+	log.Println("EPPPPI-DEBUG: sendMergelog() invoked")
 	// validate cpids
 	if newCpid == "" {
+		log.Println("EPPPPI-DEBUG (sendMergelog()): newCpid is empty string")
 		return fmt.Errorf("newCpid is empty string")
 	}
 	for _, sourceCpid := range sourceCpids {
 		if sourceCpid == "" {
+			log.Println("EPPPPI-DEBUG (sendMergelog()): one of sourceCpid is empty string")
 			return fmt.Errorf("one of sourceCpid is empty string")
 		}
 	}
@@ -158,10 +163,11 @@ func sendMergelog(newCpid string, sourceCpids []string, causeType mergelogpb.Cau
 		NewCpid:      &mergelogpb.CPID{Cpid: newCpid},
 		SourceCpids:  srcCpids,
 		Time:         timestamppb.New(time.Now()),
-		CauseType:    mergelogpb.CauseType_CAUSE_TYPE_NEW_CHANGE,
+		CauseType:    causeType,
 		CauseMessage: causeMsg,
 		By:           by,
 	}
+	log.Println("EPPPPI-DEBUG: mergelog sent into mergelogCh")
 	mergelogCh <- mergelog
 	return nil
 }
@@ -184,9 +190,9 @@ func (s *Span) ToProtoSpan() *mergelogpb.Span {
 // RunSender runs a sender.
 // This func is intended to be called as a goroutine.
 // ctx is a context that is used to stop this func.
-func runSender(doneCh <-chan struct{}, endpoint string, spanCh <-chan *mergelogpb.Span, mergelogCh <-chan *mergelogpb.Mergelog, setupDoneCh chan<- error, finishCh chan<- struct{}) {
+func runSender(doneCh <-chan struct{}, endpoint string, spanCh <-chan *mergelogpb.Span, mergelogCh <-chan *mergelogpb.Mergelog, setupDoneCh chan<- error, finishCh chan<- struct{}, timeout time.Duration) {
 	log.Println("runSender() started")
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	// TODO(improve): 毎回送信するのではなく、一定時間ごとに送信するようにする
 	conn, err := grpc.DialContext(
@@ -204,10 +210,12 @@ func runSender(doneCh <-chan struct{}, endpoint string, spanCh <-chan *mergelogp
 	}
 	defer conn.Close()
 	client := mergelogpb.NewMergelogServiceClient(conn)
+	log.Println("EPPPPI-DEBUG: client created")
 
 	setupDoneCh <- nil
 
 	for {
+		log.Println("EPPPPI-DEBUG: runSender() loop started")
 		select {
 		case <-doneCh:
 			// TODO: graceful shutdown (wait until all channels are empty)

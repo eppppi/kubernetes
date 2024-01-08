@@ -26,8 +26,6 @@ import (
 	"reflect"
 	"time"
 
-	k8scarrier "github.com/eppppi/k8s-object-carrier/carrier"
-	"go.opentelemetry.io/otel"
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -49,6 +47,8 @@ import (
 	"k8s.io/klog/v2"
 	"k8s.io/kubernetes/pkg/controller"
 	"k8s.io/kubernetes/pkg/controller/deployment/util"
+
+	k8scpdtinst "github.com/eppppi/k8s-cp-dt/instrumentation"
 )
 
 const (
@@ -62,8 +62,6 @@ const (
 
 // controllerKind contains the schema.GroupVersionKind for this controller type.
 var controllerKind = apps.SchemeGroupVersion.WithKind("Deployment")
-
-var tracer = otel.Tracer("koc-trace-cm")
 
 // DeploymentController is responsible for synchronizing Deployment objects stored
 // in the system with actual running replica sets and pods.
@@ -118,19 +116,6 @@ func NewDeploymentController(ctx context.Context, dInformer appsinformers.Deploy
 
 	dInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
-			dep := obj.(*apps.Deployment)
-			// extract span from k8s object (carrier)
-			annotations := dep.GetAnnotations()
-			if annotations == nil {
-				dep.SetAnnotations(map[string]string{})
-			}
-			carrier := k8scarrier.NewK8sAntCarrier2FromObj(dep.Annotations)
-
-			// extract the context from carrier
-			traceCtx := otel.GetTextMapPropagator().Extract(context.Background(), carrier)
-			// create child span
-			_, span := tracer.Start(traceCtx, "dep-is-added-in-depcon")
-			defer span.End()
 			dc.addDeployment(logger, obj)
 		},
 		UpdateFunc: func(oldObj, newObj interface{}) {
@@ -498,6 +483,9 @@ func (dc *DeploymentController) processNextWorkItem(ctx context.Context) bool {
 		return false
 	}
 	defer dc.queue.Done(key)
+
+	// EPPPPI: send mergelog for debug // TODO: remove
+	_ = k8scpdtinst.NewRootTraceContextAndSendMergelog("for debug", "deployment-controller")
 
 	err := dc.syncHandler(ctx, key.(string))
 	dc.handleErr(ctx, err, key)

@@ -251,7 +251,7 @@ require (
 )
 
 replace (
-	github.com/eppppi/k8s-cp-dt => github.com/eppppi/k8s-cp-dt v0.3.7
+	github.com/eppppi/k8s-cp-dt => github.com/eppppi/k8s-cp-dt v0.3.13
 	github.com/eppppi/k8s-object-carrier => github.com/eppppi/k8s-object-carrier v0.4.0
 
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp => go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.35.1

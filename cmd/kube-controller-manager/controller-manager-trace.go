@@ -3,14 +3,19 @@ package main
 import (
 	"fmt"
 	"os"
+	"time"
 
 	k8scpdtinst "github.com/eppppi/k8s-cp-dt/instrumentation"
 )
 
-func setupTraceServer(endpoint string) {
-	_, cancel := k8scpdtinst.InitSender(endpoint)
+func setupTraceServerClient(endpoint string) func() {
+	setupDoneCh, cancel := k8scpdtinst.InitSender(endpoint, 240*time.Second)
+	go func() {
+		// receive in another goroutine to avoid blocking
+		<-setupDoneCh
+	}()
 	// <-setupDoneCh // EPPPPI-NOTE: don't wait for setup because trace server is deployed after controller-manager
-	defer cancel()
+	return cancel
 }
 
 func writeResolvconf() {
