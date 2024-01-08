@@ -32,8 +32,8 @@ import (
 )
 
 func main() {
-	setupTracer()
 	writeResolvconf()
+	setupTraceServer("trace-server-svc.trace-server-ns.svc.cluster.local:9000") // This function does not wait (block) for setup because trace server is deployed after controller-manager
 
 	command := app.NewControllerManagerCommand()
 	code := cli.Run(command)

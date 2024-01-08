@@ -18,6 +18,7 @@ package apply
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -55,6 +56,8 @@ import (
 	"k8s.io/kubectl/pkg/validation"
 
 	k8scpdtinst "github.com/eppppi/k8s-cp-dt/instrumentation"
+	k8sjson "k8s.io/apimachinery/pkg/runtime/serializer/json"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 )
 
 // ApplyFlags directly reflect the information that CLI is gathering via flags.  They will be converted to Options, which
@@ -524,13 +527,12 @@ func (o *ApplyOptions) Run() error {
 		}
 	}
 
+	// TODO: REFACTOR: currently, sender hangs if there is no receiver
 	// init grpc client
 	if o.Trace {
-		doneCh := make(chan struct{})
-		k8scpdtinst.InitSender(doneCh, "localhost:9000")
-		defer func() {
-			doneCh <- struct{}{}
-		}()
+		setupDoneCh, cancel := k8scpdtinst.InitSender("localhost:9000")
+		defer cancel()
+		<-setupDoneCh
 	}
 
 	// Iterate through all objects, applying each one.
@@ -691,20 +693,15 @@ See https://kubernetes.io/docs/reference/using-api/server-side-apply/#conflicts`
 
 		// EPPPPI-NOTE: ここではユーザから与えられた新しいオブジェクトが入っている。
 		if o.Trace {
-			// generate cpid
-			cpid, err := k8scpdtinst.GenerateCpid()
-			if err != nil {
-				fmt.Println(err)
-			}
+			newTctx := k8scpdtinst.NewRootTraceContextAndSendMergelog("apply (create)", "kubectl")
+
 			// inject the cpid to the object
-			tctx := k8scpdtinst.GetTraceContext(info.Object)
-			fmt.Println("current CPID is:", tctx.GetCpid())
-			srcCpids := []string{tctx.GetCpid()}
-			tctx.SetCpid(cpid)
-			k8scpdtinst.SetTraceContext(info.Object, tctx)
-			k8scpdtinst.GenerateAndSendMergelog(cpid, srcCpids, "apply (create)", "kubectl")
+			err := k8scpdtinst.SetTraceContext(info.Object, newTctx)
+			if err != nil {
+				panic(nil)
+			}
 			// report the generated cpid
-			defer fmt.Println("CPID of this change:", cpid)
+			defer fmt.Println("CPID of this new change:", newTctx.GetCpid())
 		}
 
 		// Create the resource if it doesn't exist
@@ -747,22 +744,42 @@ See https://kubernetes.io/docs/reference/using-api/server-side-apply/#conflicts`
 	// EPPPPI-NOTE: case: object already exists
 	if o.DryRunStrategy != cmdutil.DryRunClient {
 
-		// EPPPPI-NOTE: この時点ではinfo.Objectには前のオブジェクトが入ってる。
+		// EPPPPI-NOTE: この時点ではinfo.Objectには前のオブジェクトが入ってる。そのため、info.Objectを変更してもapplyされるオブジェクトは変更されない。
+		// WARN: This operation may cause inconsistency of last-appled-configuration
 		if o.Trace {
-			// generate cpid
-			cpid, err := k8scpdtinst.GenerateCpid()
-			if err != nil {
-				fmt.Println(err)
-			}
 			// inject the cpid to the object
-			tctx := k8scpdtinst.GetTraceContext(info.Object)
-			fmt.Println("current CPID is:", tctx.GetCpid())
-			srcCpids := []string{tctx.GetCpid()}
-			tctx.SetCpid(cpid)
-			k8scpdtinst.SetTraceContext(info.Object, tctx)
-			k8scpdtinst.GenerateAndSendMergelog(cpid, srcCpids, "apply (change)", "kubectl")
-			// report the generated cpid
-			defer fmt.Println("CPID of this change:", cpid)
+			refTctx := k8scpdtinst.GetTraceContext(info.Object)
+			if refTctx != nil {
+				fmt.Println("ref CPID is:", refTctx.GetCpid())
+			} else {
+				fmt.Println("ref tctx is nil")
+			}
+
+			newTctx := k8scpdtinst.NewRootTraceContextAndSendMergelog("apply (change)", "kubectl")
+			mergedTctx, err := k8scpdtinst.MergeAndSendMergelog(newTctx, []*k8scpdtinst.TraceContext{refTctx}, "apply (change)", "kubectl")
+			if err != nil {
+				panic(err)
+			}
+			defer fmt.Println("merged cpid is:", mergedTctx.Cpid)
+
+			s := runtime.NewScheme()
+			clientgoscheme.AddToScheme(s)
+			serializer := k8sjson.NewSerializerWithOptions(k8sjson.DefaultMetaFactory, s, s, k8sjson.SerializerOptions{Yaml: false, Pretty: false, Strict: true})
+			objOfModified, _, err := serializer.Decode(modified, nil, nil)
+			if err != nil {
+				panic(err)
+			}
+			err = k8scpdtinst.SetTraceContext(objOfModified, mergedTctx)
+			if err != nil {
+				panic(err)
+			}
+			modified, err = json.Marshal(objOfModified)
+			if err != nil {
+				panic(err)
+			}
+
+			// report the generated cpid to user
+			defer fmt.Println("CPID of this new change:", newTctx.GetCpid())
 		}
 
 		metadata, _ := meta.Accessor(info.Object)

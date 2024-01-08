@@ -75,7 +75,6 @@ require (
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.35.0
 	go.opentelemetry.io/otel v1.10.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.10.0
-	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v0.0.0-00010101000000-000000000000
 	go.opentelemetry.io/otel/sdk v1.10.0
 	go.opentelemetry.io/otel/trace v1.10.0
 	go.opentelemetry.io/proto/otlp v0.19.0
@@ -252,11 +251,11 @@ require (
 )
 
 replace (
+	github.com/eppppi/k8s-cp-dt => github.com/eppppi/k8s-cp-dt v0.3.7
 	github.com/eppppi/k8s-object-carrier => github.com/eppppi/k8s-object-carrier v0.4.0
 
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp => go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.35.1
 	go.opentelemetry.io/otel => go.opentelemetry.io/otel v1.10.0
-	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp => go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.10.0
 	k8s.io/api => ./staging/src/k8s.io/api
 	k8s.io/apiextensions-apiserver => ./staging/src/k8s.io/apiextensions-apiserver
 	k8s.io/apimachinery => ./staging/src/k8s.io/apimachinery

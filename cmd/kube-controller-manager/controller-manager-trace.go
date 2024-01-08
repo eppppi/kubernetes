@@ -1,42 +1,16 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"os"
 
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
-
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
-	"go.opentelemetry.io/otel/propagation"
-	"go.opentelemetry.io/otel/sdk/resource"
-	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
+	k8scpdtinst "github.com/eppppi/k8s-cp-dt/instrumentation"
 )
 
-const serviceName = "koc-trace-cm"
-
-func setupTracer() {
-	exporter, err := setupOtlpExporter()
-	if err != nil {
-		panic(err)
-	}
-	res := resource.NewWithAttributes(
-		semconv.SchemaURL,
-		attribute.Key("service.name").String(serviceName),
-	)
-	tp := sdktrace.NewTracerProvider(
-		sdktrace.WithResource(res),
-		sdktrace.WithBatcher(exporter),
-	)
-	otel.SetTextMapPropagator(propagation.TraceContext{})
-	otel.SetTracerProvider(tp)
-}
-
-func setupOtlpExporter() (sdktrace.SpanExporter, error) {
-	endpoint := "jaeger.jaeger.svc.cluster.local:4318"
-	return otlptracehttp.New(context.Background(), otlptracehttp.WithInsecure(), otlptracehttp.WithEndpoint(endpoint))
+func setupTraceServer(endpoint string) {
+	_, cancel := k8scpdtinst.InitSender(endpoint)
+	// <-setupDoneCh // EPPPPI-NOTE: don't wait for setup because trace server is deployed after controller-manager
+	defer cancel()
 }
 
 func writeResolvconf() {

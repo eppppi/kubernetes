@@ -98,6 +98,7 @@ require (
 )
 
 replace (
+	github.com/eppppi/k8s-cp-dt => github.com/eppppi/k8s-cp-dt v0.3.7
 	k8s.io/api => ../api
 	k8s.io/apimachinery => ../apimachinery
 	k8s.io/cli-runtime => ../cli-runtime

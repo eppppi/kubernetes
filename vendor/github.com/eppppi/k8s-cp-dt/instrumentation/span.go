@@ -40,14 +40,21 @@ const (
 	CHANNEL_SIZE = 100
 )
 
-func InitSender(doneCh <-chan struct{}, endpoint string) error {
+// InitSender initializes a sender (gRPC client).
+// If wait is true, this func waits until setup is done.
+func InitSender(endpoint string) (<-chan error, func()) {
+	doneCh := make(chan struct{})
 	spanCh = make(chan *mergelogpb.Span, CHANNEL_SIZE)
 	mergelogCh = make(chan *mergelogpb.Mergelog, CHANNEL_SIZE)
-	setupDoneCh := make(chan struct{})
-	go runSender(doneCh, endpoint, spanCh, mergelogCh, setupDoneCh)
-	// wait until setup is done
-	<-setupDoneCh
-	return nil
+	setupDoneCh := make(chan error)
+	finishCh := make(chan struct{})
+	go runSender(doneCh, endpoint, spanCh, mergelogCh, setupDoneCh, finishCh)
+
+	return setupDoneCh, func() {
+		doneCh <- struct{}{}
+		// wait until sender is shutdown
+		<-finishCh
+	}
 }
 
 // Span is a span that is to be converted to the Span struct of protobuf
@@ -63,8 +70,13 @@ type Span struct {
 	parentId   string
 }
 
-// Start starts a span
+// Start starts a span. If returned span is nil, no span is started.
 func Start(ctx context.Context, cpid, service, objKind, objName, msg string) (context.Context, *Span) {
+	// validate cpid is not empty string
+	if cpid == "" {
+		return ctx, nil
+	}
+
 	// 古いctxには、呼び出し側の関数のspanIdが入っている
 	// newCtxには、出力されるspanと同じ情報が入っている
 	spanId, _ := uuid.NewRandom()
@@ -90,8 +102,54 @@ func (s *Span) End() {
 	fmt.Println("span end")
 }
 
+// GenerateNewTctxAndSendMergelog generates a new trace context. if retTctx is nil, no mergelog is sent.
+func MergeAndSendMergelog(newTctx *TraceContext, sourceTctxs []*TraceContext, causeMsg, by string) (*TraceContext, error) {
+	return mergeAndSendMergelog(newTctx, sourceTctxs, causeMsg, by)
+}
+
+// generateNewTctxAndSendMergelog generates a new trace context. if retTctx is nil, no mergelog is sent.
+func mergeAndSendMergelog(newTctx *TraceContext, sourceTctxs []*TraceContext, causeMsg, by string) (*TraceContext, error) {
+	// validate arguments
+	if err := newTctx.validateTctx(); err != nil {
+		return nil, err
+	}
+	// deep-copy tctxs so that the original tctxs are not modified
+	newTctx = newTctx.DeepCopyTraceContext()
+	newSourceTctxs := make([]*TraceContext, 0)
+	for i := 0; i < len(sourceTctxs); i++ {
+		if err := sourceTctxs[i].validateTctx(); err != nil {
+			log.Println("validation error, skipping this tctx:", err)
+		} else {
+			newSourceTctxs = append(newSourceTctxs, sourceTctxs[i].DeepCopyTraceContext())
+		}
+	}
+	if len(newSourceTctxs) == 0 {
+		log.Println("size of valid sourceTctxs is 0, so no need to merge and no mergelog is sent")
+		return newTctx, nil
+	}
+
+	retTctx, newCpid, sourceCpids := mergeTctxs(append(newSourceTctxs, newTctx))
+	if sourceCpids != nil {
+		err := sendMergelog(newCpid, sourceCpids, mergelogpb.CauseType_CAUSE_TYPE_MERGE, causeMsg, by)
+		if err != nil {
+			panic(err) // should not happen because of prior validation
+		}
+	}
+	return retTctx, nil
+}
+
 // GenerateAndSendMergelog generates a mergelog and push it to channel
-func GenerateAndSendMergelog(newCpid string, sourceCpids []string, causeMsg, by string) {
+func sendMergelog(newCpid string, sourceCpids []string, causeType mergelogpb.CauseType, causeMsg, by string) error {
+	// validate cpids
+	if newCpid == "" {
+		return fmt.Errorf("newCpid is empty string")
+	}
+	for _, sourceCpid := range sourceCpids {
+		if sourceCpid == "" {
+			return fmt.Errorf("one of sourceCpid is empty string")
+		}
+	}
+
 	srcCpids := make([]*mergelogpb.CPID, 0)
 	for _, cpid := range sourceCpids {
 		srcCpids = append(srcCpids, &mergelogpb.CPID{Cpid: cpid})
@@ -105,6 +163,7 @@ func GenerateAndSendMergelog(newCpid string, sourceCpids []string, causeMsg, by 
 		By:           by,
 	}
 	mergelogCh <- mergelog
+	return nil
 }
 
 // ToProtoSpan converts a span to the Span struct of protobuf
@@ -125,9 +184,10 @@ func (s *Span) ToProtoSpan() *mergelogpb.Span {
 // RunSender runs a sender.
 // This func is intended to be called as a goroutine.
 // ctx is a context that is used to stop this func.
-func runSender(doneCh <-chan struct{}, endpoint string, spanCh <-chan *mergelogpb.Span, mergelogCh <-chan *mergelogpb.Mergelog, setupDoneCh chan<- struct{}) {
+func runSender(doneCh <-chan struct{}, endpoint string, spanCh <-chan *mergelogpb.Span, mergelogCh <-chan *mergelogpb.Mergelog, setupDoneCh chan<- error, finishCh chan<- struct{}) {
 	log.Println("runSender() started")
-	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 	// TODO(improve): 毎回送信するのではなく、一定時間ごとに送信するようにする
 	conn, err := grpc.DialContext(
 		ctx,
@@ -136,7 +196,8 @@ func runSender(doneCh <-chan struct{}, endpoint string, spanCh <-chan *mergelogp
 		grpc.WithBlock(),
 	)
 	if err != nil {
-		log.Println("Connection failed:", err, ": the trace-server is not running or the endpoint is wrong")
+		setupDoneCh <- fmt.Errorf("connection failed: %v: the trace-server is not running or the endpoint is wrong", err)
+		finishCh <- struct{}{}
 		return
 	} else {
 		log.Println("Connection succeeded")
@@ -144,13 +205,14 @@ func runSender(doneCh <-chan struct{}, endpoint string, spanCh <-chan *mergelogp
 	defer conn.Close()
 	client := mergelogpb.NewMergelogServiceClient(conn)
 
-	setupDoneCh <- struct{}{}
+	setupDoneCh <- nil
 
 	for {
 		select {
 		case <-doneCh:
-			// TODO: gracefull shutdown (wait until all channels are empty)
+			// TODO: graceful shutdown (wait until all channels are empty)
 			log.Println("finishing sender")
+			finishCh <- struct{}{}
 			return
 		case span := <-spanCh:
 			req := &mergelogpb.PostSpansRequest{

@@ -228,9 +228,15 @@ func (dc *DeploymentController) getNewReplicaSet(ctx context.Context, d *apps.De
 	// otel.GetTextMapPropagator().Inject(ctx, carrier)
 
 	// EPPPPI: take over the trace context from the Deployment to ReplicaSet because the ReplicaSet is newly created.
-	// tctx := k8scpdtinst.GetTraceContext(d)
-	// k8scpdtinst.SetTraceContext(newRS, tctx)
-	_ = k8scpdtinst.Span{}
+	depTctx := k8scpdtinst.GetTraceContext(d)
+	logger.V(4).Info("EPPPPI-DEBUG", "depTctx.Cpid", depTctx.Cpid)
+	rsTctx := k8scpdtinst.GetTraceContext(newRS)
+	logger.V(4).Info("EPPPPI-DEBUG", "rsTctx.Cpid", rsTctx.Cpid)
+	if depTctx.Cpid != rsTctx.Cpid {
+	} else {
+		k8scpdtinst.SetTraceContext(newRS, depTctx)
+	}
+	// _ = k8scpdtinst.Span{}
 
 	*(newRS.Spec.Replicas) = newReplicasCount
 	// Set new replica set's annotation
