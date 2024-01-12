@@ -31,7 +31,6 @@ require (
 	github.com/docker/go-units v0.5.0
 	github.com/emicklei/go-restful/v3 v3.9.0
 	github.com/eppppi/k8s-cp-dt v0.1.8
-	github.com/eppppi/k8s-object-carrier v0.4.0
 	github.com/evanphx/json-patch v5.6.0+incompatible
 	github.com/fsnotify/fsnotify v1.6.0
 	github.com/go-logr/logr v1.3.0
@@ -251,8 +250,7 @@ require (
 )
 
 replace (
-	github.com/eppppi/k8s-cp-dt => github.com/eppppi/k8s-cp-dt v0.3.13
-	github.com/eppppi/k8s-object-carrier => github.com/eppppi/k8s-object-carrier v0.4.0
+	github.com/eppppi/k8s-cp-dt => github.com/eppppi/k8s-cp-dt v0.3.14
 
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp => go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.35.1
 	go.opentelemetry.io/otel => go.opentelemetry.io/otel v1.10.0

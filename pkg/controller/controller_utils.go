@@ -27,8 +27,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	k8scarrier "github.com/eppppi/k8s-object-carrier/carrier"
-	"go.opentelemetry.io/otel"
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -57,6 +55,8 @@ import (
 	"k8s.io/utils/integer"
 
 	"k8s.io/klog/v2"
+
+	k8scpdtinst "github.com/eppppi/k8s-cp-dt/instrumentation"
 )
 
 const (
@@ -542,10 +542,15 @@ func (r RealPodControl) CreatePodsWithGenerateName(ctx context.Context, namespac
 	if err != nil {
 		return err
 	}
-	// EPPPPI
-	// add trace annotation here
-	carrier, _ := k8scarrier.NewK8sAntCarrierFromObj(pod)
-	otel.GetTextMapPropagator().Inject(ctx, carrier)
+	// EPPPPI: pass trace context to pod
+	rsTctx := k8scpdtinst.GetTraceContext(controllerObject)
+	if rsTctx != nil {
+		err = k8scpdtinst.SetTraceContext(pod, rsTctx)
+		if err != nil {
+			klog.V(4).Info("EPPPPI-DEBUG SetTraceContext() failed", "err", err)
+		}
+	}
+
 	if len(generateName) > 0 {
 		pod.ObjectMeta.GenerateName = generateName
 	}

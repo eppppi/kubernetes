@@ -47,8 +47,6 @@ import (
 	"k8s.io/klog/v2"
 	"k8s.io/kubernetes/pkg/controller"
 	"k8s.io/kubernetes/pkg/controller/deployment/util"
-
-	k8scpdtinst "github.com/eppppi/k8s-cp-dt/instrumentation"
 )
 
 const (
@@ -483,9 +481,6 @@ func (dc *DeploymentController) processNextWorkItem(ctx context.Context) bool {
 		return false
 	}
 	defer dc.queue.Done(key)
-
-	// EPPPPI: send mergelog for debug // TODO: remove
-	_ = k8scpdtinst.NewRootTraceContextAndSendMergelog("for debug", "deployment-controller")
 
 	err := dc.syncHandler(ctx, key.(string))
 	dc.handleErr(ctx, err, key)

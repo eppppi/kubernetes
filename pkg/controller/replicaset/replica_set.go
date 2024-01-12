@@ -36,10 +36,7 @@ import (
 	"sync"
 	"time"
 
-	k8scarrier "github.com/eppppi/k8s-object-carrier/carrier"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -161,21 +158,6 @@ func NewBaseController(logger klog.Logger, rsInformer appsinformers.ReplicaSetIn
 
 	rsInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
-			// extract span from k8s object (carrier)
-			carrier, err := k8scarrier.NewK8sAntCarrierFromInterface(obj)
-			if err == nil {
-				// extract the context from carrier
-				ctx := otel.GetTextMapPropagator().Extract(context.Background(), carrier)
-				// create child span
-				_, span := tracer.Start(ctx, "rs-is-added-in-rscon")
-				defer span.End()
-				// record event
-				span.AddEvent("add event in RS")
-				// print RS
-				fmt.Println(obj.(*apps.ReplicaSet).GetAnnotations()[k8scarrier.KOC_KEY])
-				// Do something
-				// DoSomething(ctx, "foo-value", "bar-value")
-			}
 			rsc.addRS(logger, obj)
 		},
 		UpdateFunc: func(oldObj, newObj interface{}) {
@@ -623,8 +605,6 @@ func (rsc *ReplicaSetController) manageReplicas(ctx context.Context, filteredPod
 		// event spam that those failures would generate.
 		successfulCreations, err := slowStartBatch(diff, controller.SlowStartInitialBatchSize, func() error {
 			// EPPPPI: start span for each pod creation
-			ctx, span := tracer.Start(ctx, "create-pod-in-rscon", trace.WithAttributes(attribute.String("controller-name", "ReplicaSet")))
-			defer span.End()
 			err := rsc.podControl.CreatePods(ctx, rs.Namespace, &rs.Spec.Template, rs, metav1.NewControllerRef(rs, rsc.GroupVersionKind))
 			if err != nil {
 				if apierrors.HasStatusCause(err, v1.NamespaceTerminatingCause) {
@@ -714,9 +694,7 @@ func (rsc *ReplicaSetController) syncReplicaSet(ctx context.Context, key string)
 		return err
 	}
 	rs, err := rsc.rsLister.ReplicaSets(namespace).Get(name)
-	// EPPPPI-NOTE: extract trace contexts here
-	carrier, err := k8scarrier.NewK8sAntCarrierFromInterface(rs)
-	ctx = otel.GetTextMapPropagator().Extract(context.Background(), carrier)
+	// // EPPPPI-NOTE: extract trace contexts here
 	if apierrors.IsNotFound(err) {
 		logger.V(4).Info("deleted", "kind", rsc.Kind, "key", key)
 		rsc.expectations.DeleteExpectations(logger, key)
