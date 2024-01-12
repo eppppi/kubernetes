@@ -498,6 +498,23 @@ func (o *ApplyOptions) SetObjects(infos []*resource.Info) {
 
 // Run executes the `apply` command.
 func (o *ApplyOptions) Run() error {
+
+	ctx := context.Background()
+	var span *k8scpdtinst.Span
+	// TODO: REFACTOR: currently, sender hangs if there is no receiver
+	if o.Trace {
+		setupDoneCh, cancel := k8scpdtinst.InitSender("localhost:9000", 5*time.Second)
+		defer cancel()
+		<-setupDoneCh
+		newTctx := k8scpdtinst.NewRootTraceContextAndSendMergelog("apply", "kubectl")
+		// report the generated cpid
+		fmt.Println("CPID of this new change:", newTctx.GetCpid())
+
+		ctx, span = k8scpdtinst.Start(ctx, newTctx.GetCpid(), "kubectl-apply", "", "", "Run()")
+		ctx = k8scpdtinst.SetTraceContextsToContext(ctx, []*k8scpdtinst.TraceContext{newTctx})
+		defer span.End()
+	}
+
 	if o.PreProcessorFn != nil {
 		klog.V(4).Infof("Running apply pre-processor function")
 		if err := o.PreProcessorFn(); err != nil {
@@ -527,17 +544,9 @@ func (o *ApplyOptions) Run() error {
 		}
 	}
 
-	// TODO: REFACTOR: currently, sender hangs if there is no receiver
-	// init grpc client
-	if o.Trace {
-		setupDoneCh, cancel := k8scpdtinst.InitSender("localhost:9000", 5*time.Second)
-		defer cancel()
-		<-setupDoneCh
-	}
-
 	// Iterate through all objects, applying each one.
 	for _, info := range infos {
-		if err := o.applyOneObject(info); err != nil {
+		if err := o.applyOneObject(ctx, info); err != nil {
 			errs = append(errs, err)
 		}
 	}
@@ -561,7 +570,7 @@ func (o *ApplyOptions) Run() error {
 	return nil
 }
 
-func (o *ApplyOptions) applyOneObject(info *resource.Info) error {
+func (o *ApplyOptions) applyOneObject(ctx context.Context, info *resource.Info) error {
 	o.MarkNamespaceVisited(info)
 
 	if err := o.Recorder.Record(info.Object); err != nil {
@@ -693,15 +702,17 @@ See https://kubernetes.io/docs/reference/using-api/server-side-apply/#conflicts`
 
 		// EPPPPI-NOTE: ここではユーザから与えられた新しいオブジェクトが入っている。
 		if o.Trace {
-			newTctx := k8scpdtinst.NewRootTraceContextAndSendMergelog("apply (create)", "kubectl")
+			tctxs := k8scpdtinst.GetTraceContextsFromContext(ctx)
+			if len(tctxs) != 1 {
+				panic("This should not happen")
+			}
+			newTctx := tctxs[0]
 
 			// inject the cpid to the object
 			err := k8scpdtinst.SetTraceContext(info.Object, newTctx)
 			if err != nil {
 				panic(nil)
 			}
-			// report the generated cpid
-			defer fmt.Println("CPID of this new change:", newTctx.GetCpid())
 		}
 
 		// Create the resource if it doesn't exist
@@ -747,7 +758,7 @@ See https://kubernetes.io/docs/reference/using-api/server-side-apply/#conflicts`
 		// EPPPPI-NOTE: この時点ではinfo.Objectには前のオブジェクトが入ってる。そのため、info.Objectを変更してもapplyされるオブジェクトは変更されない。
 		// WARN: This operation may cause inconsistency of last-appled-configuration
 		if o.Trace {
-			// inject the cpid to the object
+			// get the ref cpid
 			refTctx := k8scpdtinst.GetTraceContext(info.Object)
 			if refTctx != nil {
 				fmt.Println("ref CPID is:", refTctx.GetCpid())
@@ -755,7 +766,12 @@ See https://kubernetes.io/docs/reference/using-api/server-side-apply/#conflicts`
 				fmt.Println("ref tctx is nil")
 			}
 
-			newTctx := k8scpdtinst.NewRootTraceContextAndSendMergelog("apply (change)", "kubectl")
+			tctxs := k8scpdtinst.GetTraceContextsFromContext(ctx)
+			if len(tctxs) != 1 {
+				panic("This should not happen")
+			}
+			newTctx := tctxs[0]
+
 			mergedTctx, err := k8scpdtinst.MergeAndSendMergelog(newTctx, []*k8scpdtinst.TraceContext{refTctx}, "apply (change)", "kubectl")
 			if err != nil {
 				panic(err)
@@ -777,9 +793,6 @@ See https://kubernetes.io/docs/reference/using-api/server-side-apply/#conflicts`
 			if err != nil {
 				panic(err)
 			}
-
-			// report the generated cpid to user
-			defer fmt.Println("CPID of this new change:", newTctx.GetCpid())
 		}
 
 		metadata, _ := meta.Accessor(info.Object)
