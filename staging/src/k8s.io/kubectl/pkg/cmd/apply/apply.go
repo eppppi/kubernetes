@@ -501,6 +501,7 @@ func (o *ApplyOptions) Run() error {
 
 	ctx := context.Background()
 	var span *k8scpdtinst.Span
+	var err error
 	// TODO: REFACTOR: currently, sender hangs if there is no receiver
 	if o.Trace {
 		setupDoneCh, cancel := k8scpdtinst.InitSender("localhost:9000", 5*time.Second)
@@ -510,7 +511,10 @@ func (o *ApplyOptions) Run() error {
 		// report the generated cpid
 		fmt.Println("CPID of this new change:", newTctx.GetCpid())
 
-		ctx, span = k8scpdtinst.Start(ctx, newTctx.GetCpid(), "kubectl-apply", "", "", "Run()")
+		ctx, span, err = k8scpdtinst.Start(ctx, newTctx.GetCpid(), "kubectl-apply", "", "", "Run()")
+		if err != nil {
+			panic(err)
+		}
 		ctx = k8scpdtinst.SetTraceContextsToContext(ctx, []*k8scpdtinst.TraceContext{newTctx})
 		defer span.End()
 	}
@@ -571,6 +575,15 @@ func (o *ApplyOptions) Run() error {
 }
 
 func (o *ApplyOptions) applyOneObject(ctx context.Context, info *resource.Info) error {
+	var span *k8scpdtinst.Span
+	var err error
+	if o.Trace {
+		ctx, span, err = k8scpdtinst.Start(ctx, "", "kubectl-apply", "", "", "applyOneObject()")
+		if err != nil {
+			panic(err)
+		}
+		defer span.End()
+	}
 	o.MarkNamespaceVisited(info)
 
 	if err := o.Recorder.Record(info.Object); err != nil {
@@ -770,13 +783,13 @@ See https://kubernetes.io/docs/reference/using-api/server-side-apply/#conflicts`
 			if len(tctxs) != 1 {
 				panic("This should not happen")
 			}
-			newTctx := tctxs[0]
+			// newTctx := tctxs[0]
 
-			mergedTctx, err := k8scpdtinst.MergeAndSendMergelog(newTctx, []*k8scpdtinst.TraceContext{refTctx}, "apply (change)", "kubectl")
-			if err != nil {
-				panic(err)
-			}
-			defer fmt.Println("merged cpid is:", mergedTctx.Cpid)
+			// mergedTctx := k8scpdtinst.MergeAndSendMergelog([]*k8scpdtinst.TraceContext{newTctx, refTctx}, "apply (change)", "kubectl")
+			// if err != nil {
+			// 	panic(err)
+			// }
+			// defer fmt.Println("merged cpid is:", mergedTctx.Cpid)
 
 			s := runtime.NewScheme()
 			clientgoscheme.AddToScheme(s)
@@ -785,10 +798,10 @@ See https://kubernetes.io/docs/reference/using-api/server-side-apply/#conflicts`
 			if err != nil {
 				panic(err)
 			}
-			err = k8scpdtinst.SetTraceContext(objOfModified, mergedTctx)
-			if err != nil {
-				panic(err)
-			}
+			// err = k8scpdtinst.SetTraceContext(objOfModified, mergedTctx)
+			// if err != nil {
+			// 	panic(err)
+			// }
 			modified, err = json.Marshal(objOfModified)
 			if err != nil {
 				panic(err)

@@ -123,6 +123,8 @@ import (
 	"k8s.io/kubernetes/pkg/volume/util/subpath"
 	"k8s.io/kubernetes/pkg/volume/util/volumepathhandler"
 	"k8s.io/utils/clock"
+
+	// k8scpdtinst "github.com/eppppi/k8s-cp-dt/instrumentation"
 )
 
 const (
@@ -1685,6 +1687,19 @@ func (kl *Kubelet) Run(updates <-chan kubetypes.PodUpdate) {
 // the most accurate information possible about an error situation to aid debugging.
 // Callers should not write an event if this operation returns an error.
 func (kl *Kubelet) SyncPod(ctx context.Context, updateType kubetypes.SyncPodType, pod, mirrorPod *v1.Pod, podStatus *kubecontainer.PodStatus) (isTerminal bool, err error) {
+	// // EPPPPI: start span if ctx has trace context
+	// tctxs := k8scpdtinst.GetTraceContextsFromContext(ctx)
+	// var span *k8scpdtinst.Span
+	// if len(tctxs) != 0 {
+	// 	// start span only when any trace context are set in ctx
+	// 	ctx, span, err = k8scpdtinst.Start(ctx, "", "kubelet", pod.GroupVersionKind().Kind, pod.GetName(), "SyncPod()")
+	// 	if err != nil {
+	// 		klog.Info("failed to start span:", err)
+	// 	} else {
+	// 		defer span.End()
+	// 	}
+	// }
+
 	ctx, otelSpan := kl.tracer.Start(ctx, "syncPod", trace.WithAttributes(
 		attribute.String("k8s.pod.uid", string(pod.UID)),
 		attribute.String("k8s.pod", klog.KObj(pod).String()),

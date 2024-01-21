@@ -43,6 +43,7 @@ import (
 	"k8s.io/kubernetes/pkg/scheduler/metrics"
 	"k8s.io/kubernetes/pkg/scheduler/util"
 	utiltrace "k8s.io/utils/trace"
+	// k8scpdtinst "github.com/eppppi/k8s-cp-dt/instrumentation"
 )
 
 const (
@@ -78,6 +79,18 @@ func (sched *Scheduler) scheduleOne(ctx context.Context) {
 
 	pod := podInfo.Pod
 	logger.V(4).Info("About to try and schedule pod", "pod", klog.KObj(pod))
+	// // EPPPPPI: if deployment has trace context, start span
+	// tctx := k8scpdtinst.GetTraceContext(pod)
+	// var span *k8scpdtinst.Span
+	// if tctx != nil {
+	// 	ctx, span, err = k8scpdtinst.Start(ctx, tctx.GetCpid(), "scheduler", pod.GetObjectKind().GroupVersionKind().Kind, pod.GetName(), "scheduleOne()")
+	// 	if err != nil {
+	// 		klog.Info("failed to start span,", err)
+	// 	} else {
+	// 		defer span.End()
+	// 	}
+	// 	ctx = k8scpdtinst.SetTraceContextsToContext(ctx, []*k8scpdtinst.TraceContext{tctx})
+	// }
 
 	fwk, err := sched.frameworkForPod(pod)
 	if err != nil {
@@ -140,6 +153,21 @@ func (sched *Scheduler) schedulingCycle(
 	start time.Time,
 	podsToActivate *framework.PodsToActivate,
 ) (ScheduleResult, *framework.QueuedPodInfo, *framework.Status) {
+	// // EPPPPI: start span if ctx has trace context
+	// tctxs := k8scpdtinst.GetTraceContextsFromContext(ctx)
+	// var span *k8scpdtinst.Span
+	// var err error
+	// if len(tctxs) != 0 {
+	// 	// start span only when any trace context are set in ctx
+	// 	ctx, span, err = k8scpdtinst.Start(ctx, "", "scheduler", "", "", "schedulingCycle()")
+	// 	if err != nil {
+	// 		klog.Info("failed to start span:", err)
+	// 	} else {
+	// 		defer span.End()
+	// 	}
+	// }
+	// // EPPPPI: set trace contexts to ctx
+
 	logger := klog.FromContext(ctx)
 	pod := podInfo.Pod
 	scheduleResult, err := sched.SchedulePod(ctx, fwk, state, pod)

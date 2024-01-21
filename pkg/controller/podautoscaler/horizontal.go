@@ -874,6 +874,7 @@ func (a *HorizontalController) reconcileAutoscaler(ctx context.Context, hpaShare
 	}
 
 	if rescale {
+		// EPPPPI-NOTE: here we do scale.
 		scale.Spec.Replicas = desiredReplicas
 		_, err = a.scaleNamespacer.Scales(hpa.Namespace).Update(ctx, targetGR, scale, metav1.UpdateOptions{})
 		if err != nil {

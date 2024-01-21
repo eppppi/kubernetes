@@ -37,6 +37,7 @@ import (
 	kubetypes "k8s.io/kubernetes/pkg/kubelet/types"
 	"k8s.io/kubernetes/pkg/kubelet/util/queue"
 	"k8s.io/utils/clock"
+	// k8scpdtinst "github.com/eppppi/k8s-cp-dt/instrumentation"
 )
 
 // OnCompleteFunc is a function that is invoked when an operation completes.
@@ -1226,6 +1227,20 @@ func (p *podWorkers) podWorkerLoop(podUID types.UID, podUpdates <-chan struct{})
 		if !canStart {
 			continue
 		}
+
+		// // EPPPPI: if deployment has trace context, start span
+		// tctx := k8scpdtinst.GetTraceContext(update.Options.Pod)
+		// var span *k8scpdtinst.Span
+		// var err error
+		// if tctx != nil {
+		// 	ctx, span, err = k8scpdtinst.Start(ctx, tctx.GetCpid(), "kubelet", update.Options.Pod.GroupVersionKind().Kind, update.Options.Pod.GetName(), "podWorkerLoop()")
+		// 	if err != nil {
+		// 		klog.Info("failed to start span,", err)
+		// 	} else {
+		// 		defer span.End()
+		// 	}
+		// 	ctx = k8scpdtinst.SetTraceContextsToContext(ctx, []*k8scpdtinst.TraceContext{tctx})
+		// }
 
 		podUID, podRef := podUIDAndRefForUpdate(update.Options)
 

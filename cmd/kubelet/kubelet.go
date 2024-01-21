@@ -29,9 +29,14 @@ import (
 	_ "k8s.io/component-base/metrics/prometheus/clientgo" // for client metric registration
 	_ "k8s.io/component-base/metrics/prometheus/version"  // for version metric registration
 	"k8s.io/kubernetes/cmd/kubelet/app"
+	// k8scpdtinst "github.com/eppppi/k8s-cp-dt/instrumentation"
 )
 
 func main() {
+	// k8scpdtinst.WriteResolvconf() // EPPPPI-NOTE: kubelet does not need to write resolv.conf because it is deployed as a process not a container
+	// cancel := k8scpdtinst.SetupTraceServerClient("trace-server-svc.trace-server-ns.svc.cluster.local:9000") // This function does not wait (block) for setup because trace server is deployed after controller-manager
+	// defer cancel()
+
 	command := app.NewKubeletCommand()
 	code := cli.Run(command)
 	os.Exit(code)

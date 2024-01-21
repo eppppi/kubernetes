@@ -34,8 +34,7 @@ import (
 	"k8s.io/kubernetes/pkg/controller"
 	deploymentutil "k8s.io/kubernetes/pkg/controller/deployment/util"
 	labelsutil "k8s.io/kubernetes/pkg/util/labels"
-
-	k8scpdtinst "github.com/eppppi/k8s-cp-dt/instrumentation"
+	// k8scpdtinst "github.com/eppppi/k8s-cp-dt/instrumentation"
 )
 
 // syncStatusOnly only updates Deployments Status and doesn't take any mutating actions.
@@ -141,6 +140,20 @@ const (
 // 3. If there's no existing new RS and createIfNotExisted is true, create one with appropriate revision number (maxOldRevision + 1) and replicas.
 // Note that the pod-template-hash will be added to adopted RSes and pods.
 func (dc *DeploymentController) getNewReplicaSet(ctx context.Context, d *apps.Deployment, rsList, oldRSs []*apps.ReplicaSet, createIfNotExisted bool) (*apps.ReplicaSet, error) {
+	// // EPPPPI: start span if ctx has trace context
+	// tctxs := k8scpdtinst.GetTraceContextsFromContext(ctx)
+	// var span *k8scpdtinst.Span
+	// var err error
+	// if len(tctxs) != 0 {
+	// 	// start span only when any trace context are set in ctx
+	// 	ctx, span, err = k8scpdtinst.Start(ctx, "", "deployment-controller", "", "", "getNewReplicaSet()")
+	// 	if err != nil {
+	// 		klog.Info("failed to start span:", err)
+	// 	} else {
+	// 		defer span.End()
+	// 	}
+	// }
+
 	logger := klog.FromContext(ctx)
 	existingNewRS := deploymentutil.FindNewReplicaSet(d, rsList)
 
@@ -161,6 +174,9 @@ func (dc *DeploymentController) getNewReplicaSet(ctx context.Context, d *apps.De
 		minReadySecondsNeedsUpdate := rsCopy.Spec.MinReadySeconds != d.Spec.MinReadySeconds
 		if annotationsUpdated || minReadySecondsNeedsUpdate {
 			rsCopy.Spec.MinReadySeconds = d.Spec.MinReadySeconds
+			// // EPPPPI
+			// newTctx := k8scpdtinst.MergeAndSendMergelog(k8scpdtinst.GetTraceContextsFromContext(ctx), "update ReplicaSet in getNewReplicaSet()", "deployment-controller")
+			// _ = k8scpdtinst.SetTraceContext(rsCopy, newTctx)
 			return dc.client.AppsV1().ReplicaSets(rsCopy.ObjectMeta.Namespace).Update(ctx, rsCopy, metav1.UpdateOptions{})
 		}
 
@@ -227,13 +243,13 @@ func (dc *DeploymentController) getNewReplicaSet(ctx context.Context, d *apps.De
 	// // EPPPPI: ここでDepのTraceをRSに引き継ぐ
 	// otel.GetTextMapPropagator().Inject(ctx, carrier)
 
-	// EPPPPI: take over the trace context from the Deployment to ReplicaSet because the ReplicaSet is newly created.
-	depTctx := k8scpdtinst.GetTraceContext(d)
-	logger.V(4).Info("EPPPPI-DEBUG", "depTctx.Cpid", depTctx.GetCpid())
-	err = k8scpdtinst.SetTraceContext(newRS, depTctx)
-	if err != nil {
-		klog.V(4).Info("EPPPPI-DEBUG SetTraceContext() failed", "err", err)
-	}
+	// // EPPPPI: take over the trace context from the Deployment to ReplicaSet because the ReplicaSet is newly created.
+	// depTctx := k8scpdtinst.GetTraceContext(d)
+	// logger.V(4).Info("EPPPPI-DEBUG", "depTctx.Cpid", depTctx.GetCpid())
+	// err = k8scpdtinst.SetTraceContext(newRS, depTctx)
+	// if err != nil {
+	// 	klog.V(4).Info("EPPPPI-DEBUG SetTraceContext() failed", "err", err)
+	// }
 
 	*(newRS.Spec.Replicas) = newReplicasCount
 	// Set new replica set's annotation
@@ -242,6 +258,9 @@ func (dc *DeploymentController) getNewReplicaSet(ctx context.Context, d *apps.De
 	// hash collisions. If there is any other error, we need to report it in the status of
 	// the Deployment.
 	alreadyExists := false
+	// // EPPPPI
+	// newTctx := k8scpdtinst.MergeAndSendMergelog(k8scpdtinst.GetTraceContextsFromContext(ctx), "create ReplicaSet in getNewReplicaSet()", "deployment-controller")
+	// _ = k8scpdtinst.SetTraceContext(newRS, newTctx)
 	createdRS, err := dc.client.AppsV1().ReplicaSets(d.Namespace).Create(ctx, &newRS, metav1.CreateOptions{})
 	switch {
 	// We may end up hitting this due to a slow cache or a fast resync of the Deployment.

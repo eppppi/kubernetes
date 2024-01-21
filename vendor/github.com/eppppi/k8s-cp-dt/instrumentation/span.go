@@ -21,11 +21,12 @@ const (
 )
 
 func GetParentIdFromContext(ctx context.Context) string {
-	if val := ctx.Value(kOC_PARENTID_KEY); val == nil {
+	if val, ok := ctx.Value(kOC_PARENTID_KEY).(string); !ok {
 		return ""
 	} else {
-		return val.(string)
+		return val
 	}
+
 }
 
 func SetParentIdToContext(ctx context.Context, parentId string) context.Context {
@@ -83,11 +84,19 @@ type Span struct {
 	parentId   string
 }
 
-// Start starts a span. If returned span is nil, no span is started.
-func Start(ctx context.Context, cpid, service, objKind, objName, msg string) (context.Context, *Span) {
-	// validate cpid is not empty string
+// Start starts a span. Eighter cpid or parentSpanId, and not both must be specified  <- ?????? not "cpid or parentSpanId", but "cpid or tctx in ctx"?
+func Start(ctx context.Context, cpid, service, objKind, objName, msg string) (context.Context, *Span, error) {
+	if parentSpanId := GetParentIdFromContext(ctx); (parentSpanId == "" && cpid == "") || (parentSpanId != "" && cpid != "") {
+		return nil, nil, fmt.Errorf("eighter cpid or parentSpanId, and not both must be specified")
+	}
 	if cpid == "" {
-		return ctx, nil
+		tctxs := GetTraceContextsFromContext(ctx)
+		if len(tctxs) == 0 {
+			return nil, nil, fmt.Errorf("cpid = \"\", and no trace context found in ctx")
+		}
+		// TODO (REFACTOR): use all of tctxs instead of only one
+		// TODO (REFACTOR) (idea): change Span to embrace multiple tctxs so that we don't need to merge tctxs here every time
+		cpid = tctxs[0].GetCpid()
 	}
 
 	// 古いctxには、呼び出し側の関数のspanIdが入っている
@@ -104,7 +113,7 @@ func Start(ctx context.Context, cpid, service, objKind, objName, msg string) (co
 		parentId:   GetParentIdFromContext(ctx), // 古いctxのspanIdを入れる
 	}
 	newCtx := SetParentIdToContext(ctx, spanId.String())
-	return newCtx, span
+	return newCtx, span, nil
 }
 
 // End ends a span

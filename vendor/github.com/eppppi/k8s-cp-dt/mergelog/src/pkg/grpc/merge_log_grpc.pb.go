@@ -23,9 +23,11 @@ const (
 	MergelogService_PostMergelogs_FullMethodName        = "/k8scpdt.mergelog.v1.MergelogService/PostMergelogs"
 	MergelogService_GetAllMergelogs_FullMethodName      = "/k8scpdt.mergelog.v1.MergelogService/GetAllMergelogs"
 	MergelogService_GetRelevantMergelogs_FullMethodName = "/k8scpdt.mergelog.v1.MergelogService/GetRelevantMergelogs"
+	MergelogService_DeleteAllMergelogs_FullMethodName   = "/k8scpdt.mergelog.v1.MergelogService/DeleteAllMergelogs"
 	MergelogService_PostSpans_FullMethodName            = "/k8scpdt.mergelog.v1.MergelogService/PostSpans"
 	MergelogService_GetAllSpans_FullMethodName          = "/k8scpdt.mergelog.v1.MergelogService/GetAllSpans"
 	MergelogService_GetRelevantSpans_FullMethodName     = "/k8scpdt.mergelog.v1.MergelogService/GetRelevantSpans"
+	MergelogService_DeleteAllSpans_FullMethodName       = "/k8scpdt.mergelog.v1.MergelogService/DeleteAllSpans"
 )
 
 // MergelogServiceClient is the client API for MergelogService service.
@@ -35,9 +37,11 @@ type MergelogServiceClient interface {
 	PostMergelogs(ctx context.Context, in *MergelogRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	GetAllMergelogs(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*Mergelogs, error)
 	GetRelevantMergelogs(ctx context.Context, in *CPID, opts ...grpc.CallOption) (*Mergelogs, error)
+	DeleteAllMergelogs(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	PostSpans(ctx context.Context, in *PostSpansRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	GetAllSpans(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*GetAllSpansResponse, error)
 	GetRelevantSpans(ctx context.Context, in *CPID, opts ...grpc.CallOption) (*GetRelevantSpansResponse, error)
+	DeleteAllSpans(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type mergelogServiceClient struct {
@@ -75,6 +79,15 @@ func (c *mergelogServiceClient) GetRelevantMergelogs(ctx context.Context, in *CP
 	return out, nil
 }
 
+func (c *mergelogServiceClient) DeleteAllMergelogs(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, MergelogService_DeleteAllMergelogs_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *mergelogServiceClient) PostSpans(ctx context.Context, in *PostSpansRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, MergelogService_PostSpans_FullMethodName, in, out, opts...)
@@ -102,6 +115,15 @@ func (c *mergelogServiceClient) GetRelevantSpans(ctx context.Context, in *CPID, 
 	return out, nil
 }
 
+func (c *mergelogServiceClient) DeleteAllSpans(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, MergelogService_DeleteAllSpans_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MergelogServiceServer is the server API for MergelogService service.
 // All implementations must embed UnimplementedMergelogServiceServer
 // for forward compatibility
@@ -109,9 +131,11 @@ type MergelogServiceServer interface {
 	PostMergelogs(context.Context, *MergelogRequest) (*emptypb.Empty, error)
 	GetAllMergelogs(context.Context, *emptypb.Empty) (*Mergelogs, error)
 	GetRelevantMergelogs(context.Context, *CPID) (*Mergelogs, error)
+	DeleteAllMergelogs(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
 	PostSpans(context.Context, *PostSpansRequest) (*emptypb.Empty, error)
 	GetAllSpans(context.Context, *emptypb.Empty) (*GetAllSpansResponse, error)
 	GetRelevantSpans(context.Context, *CPID) (*GetRelevantSpansResponse, error)
+	DeleteAllSpans(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
 	mustEmbedUnimplementedMergelogServiceServer()
 }
 
@@ -128,6 +152,9 @@ func (UnimplementedMergelogServiceServer) GetAllMergelogs(context.Context, *empt
 func (UnimplementedMergelogServiceServer) GetRelevantMergelogs(context.Context, *CPID) (*Mergelogs, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetRelevantMergelogs not implemented")
 }
+func (UnimplementedMergelogServiceServer) DeleteAllMergelogs(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteAllMergelogs not implemented")
+}
 func (UnimplementedMergelogServiceServer) PostSpans(context.Context, *PostSpansRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method PostSpans not implemented")
 }
@@ -136,6 +163,9 @@ func (UnimplementedMergelogServiceServer) GetAllSpans(context.Context, *emptypb.
 }
 func (UnimplementedMergelogServiceServer) GetRelevantSpans(context.Context, *CPID) (*GetRelevantSpansResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetRelevantSpans not implemented")
+}
+func (UnimplementedMergelogServiceServer) DeleteAllSpans(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteAllSpans not implemented")
 }
 func (UnimplementedMergelogServiceServer) mustEmbedUnimplementedMergelogServiceServer() {}
 
@@ -204,6 +234,24 @@ func _MergelogService_GetRelevantMergelogs_Handler(srv interface{}, ctx context.
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MergelogService_DeleteAllMergelogs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MergelogServiceServer).DeleteAllMergelogs(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MergelogService_DeleteAllMergelogs_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MergelogServiceServer).DeleteAllMergelogs(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _MergelogService_PostSpans_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(PostSpansRequest)
 	if err := dec(in); err != nil {
@@ -258,6 +306,24 @@ func _MergelogService_GetRelevantSpans_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MergelogService_DeleteAllSpans_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MergelogServiceServer).DeleteAllSpans(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MergelogService_DeleteAllSpans_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MergelogServiceServer).DeleteAllSpans(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // MergelogService_ServiceDesc is the grpc.ServiceDesc for MergelogService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -278,6 +344,10 @@ var MergelogService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _MergelogService_GetRelevantMergelogs_Handler,
 		},
 		{
+			MethodName: "DeleteAllMergelogs",
+			Handler:    _MergelogService_DeleteAllMergelogs_Handler,
+		},
+		{
 			MethodName: "PostSpans",
 			Handler:    _MergelogService_PostSpans_Handler,
 		},
@@ -288,6 +358,10 @@ var MergelogService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetRelevantSpans",
 			Handler:    _MergelogService_GetRelevantSpans_Handler,
+		},
+		{
+			MethodName: "DeleteAllSpans",
+			Handler:    _MergelogService_DeleteAllSpans_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
