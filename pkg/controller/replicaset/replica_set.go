@@ -62,7 +62,8 @@ import (
 	"k8s.io/kubernetes/pkg/controller"
 	"k8s.io/kubernetes/pkg/controller/replicaset/metrics"
 	"k8s.io/utils/integer"
-	// k8scpdtinst "github.com/eppppi/k8s-cp-dt/instrumentation"
+
+	k8scpdtinst "github.com/eppppi/k8s-cp-dt/instrumentation"
 )
 
 const (
@@ -630,19 +631,19 @@ func (rsc *ReplicaSetController) processNextWorkItem(ctx context.Context) bool {
 // Does NOT modify <filteredPods>.
 // It will requeue the replica set in case of an error while creating/deleting pods.
 func (rsc *ReplicaSetController) manageReplicas(ctx context.Context, filteredPods []*v1.Pod, rs *apps.ReplicaSet) error {
-	// // EPPPPI: start span if ctx has trace context
-	// tctxs := k8scpdtinst.GetTraceContextsFromContext(ctx)
-	// var span *k8scpdtinst.Span
-	// var err error
-	// if len(tctxs) != 0 {
-	// 	// start span only when any trace context are set in ctx
-	// 	ctx, span, err = k8scpdtinst.Start(ctx, "", "replicaset-controller", "", "", "manageReplicas()")
-	// 	if err != nil {
-	// 		klog.Info("failed to start span:", err)
-	// 	} else {
-	// 		defer span.End()
-	// 	}
-	// }
+	// EPPPPI: start span if ctx has trace context
+	tctxs := k8scpdtinst.GetTraceContextsFromContext(ctx)
+	var span *k8scpdtinst.Span
+	var err error
+	if len(tctxs) != 0 {
+		// start span only when any trace context are set in ctx
+		ctx, span, err = k8scpdtinst.Start(ctx, "", "replicaset-controller", "", "", "manageReplicas()")
+		if err != nil {
+			klog.Info("failed to start span:", err)
+		} else {
+			defer span.End()
+		}
+	}
 
 	diff := len(filteredPods) - int(*(rs.Spec.Replicas))
 	rsKey, err := controller.KeyFunc(rs)
@@ -770,18 +771,18 @@ func (rsc *ReplicaSetController) syncReplicaSet(ctx context.Context, key string)
 	if err != nil {
 		return err
 	}
-	// // EPPPPI: if ctx has any trace contexts, start a span
-	// tctxs := k8scpdtinst.GetTraceContextsFromContext(ctx)
-	// var span *k8scpdtinst.Span
-	// if len(tctxs) != 0 {
-	// 	ctx, span, err = k8scpdtinst.Start(ctx, "", "replicaset-controller", "", "", "syncReplicaSet()")
-	// 	if err != nil {
-	// 		klog.Info("failed to start span,", err)
-	// 	} else {
-	// 		defer span.End()
-	// 	}
-	// 	// ctx = k8scpdtinst.SetTraceContextsToContext(ctx, []*k8scpdtinst.TraceContext{tctx}) // tctxs are already in ctx
-	// }
+	// EPPPPI: if ctx has any trace contexts, start a span
+	tctxs := k8scpdtinst.GetTraceContextsFromContext(ctx)
+	var span *k8scpdtinst.Span
+	if len(tctxs) != 0 {
+		ctx, span, err = k8scpdtinst.Start(ctx, "", "replicaset-controller", "", "", "syncReplicaSet()")
+		if err != nil {
+			klog.Info("failed to start span,", err)
+		} else {
+			defer span.End()
+		}
+		ctx = k8scpdtinst.SetTraceContextsToContext(ctx, []*k8scpdtinst.TraceContext{tctxs[0]}) // tctxs are already in ctx
+	}
 
 	rsNeedsSync := rsc.expectations.SatisfiedExpectations(logger, key)
 	selector, err := metav1.LabelSelectorAsSelector(rs.Spec.Selector)

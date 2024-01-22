@@ -33,11 +33,24 @@ func SetParentIdToContext(ctx context.Context, parentId string) context.Context 
 	return context.WithValue(ctx, kOC_PARENTID_KEY, parentId)
 }
 
+// GetTraceContextsFromContext returns trace contexts from ctx.
+// If ctx is nil, returns nil. If there are any nil tctxs, they are ignored.
+// (non-nil tctxs are returned, and len() of returned slice is the number of non-nil tctxs)
 func GetTraceContextsFromContext(ctx context.Context) []*TraceContext {
-	if val, ok := ctx.Value(kOC_TCTX_KEY).([]*TraceContext); !ok {
+	if ctx == nil {
+		log.Println("EPPPPI-DEBUG: GetTraceContextsFromContext(): ctx is nil")
+		return nil
+	}
+	if tctxs, ok := ctx.Value(kOC_TCTX_KEY).([]*TraceContext); !ok {
 		return nil
 	} else {
-		return val
+		retTctxs := make([]*TraceContext, 0)
+		for _, tctx := range tctxs {
+			if tctx != nil {
+				retTctxs = append(retTctxs, tctx)
+			}
+		}
+		return retTctxs
 	}
 }
 
@@ -90,18 +103,16 @@ type Span struct {
 	parentId   string
 }
 
-// Start starts a span. Eighter cpid or parentSpanId, and not both must be specified  <- ?????? not "cpid or parentSpanId", but "cpid or tctx in ctx"?
+// Start starts a span. If cpid == "" and ctx has no trace context, returns an error.
 func Start(ctx context.Context, cpid, service, objKind, objName, msg string) (context.Context, *Span, error) {
-	if parentSpanId := GetParentIdFromContext(ctx); (parentSpanId == "" && cpid == "") || (parentSpanId != "" && cpid != "") {
-		return nil, nil, fmt.Errorf("eighter cpid or parentSpanId, and not both must be specified")
-	}
 	if cpid == "" {
 		tctxs := GetTraceContextsFromContext(ctx)
 		if len(tctxs) == 0 {
-			return nil, nil, fmt.Errorf("cpid = \"\", and no trace context found in ctx")
+			return ctx, nil, fmt.Errorf("cpid = \"\", and no trace context found in ctx")
 		}
 		// TODO (REFACTOR): use all of tctxs instead of only one
 		// TODO (REFACTOR) (idea): change Span to embrace multiple tctxs so that we don't need to merge tctxs here every time
+		log.Println("EPPPPI-DEBUG: tctxx[0]:", tctxs[0])
 		cpid = tctxs[0].GetCpid()
 	}
 

@@ -76,8 +76,8 @@ type DeploymentController struct {
 	// To allow injection of syncDeployment for testing.
 	syncHandler func(ctx context.Context, dKey string) error
 	// used for unit testing
-	// enqueueDeployment func(deployment *apps.Deployment, tctxs []*k8scpdtinst.TraceContext)
-	enqueueDeployment func(deployment *apps.Deployment)
+	enqueueDeployment func(deployment *apps.Deployment, tctxs []*k8scpdtinst.TraceContext)
+	// enqueueDeployment func(deployment *apps.Deployment)
 
 	// dLister can list/get deployments from the shared informer's store
 	dLister appslisters.DeploymentLister
@@ -101,10 +101,10 @@ type DeploymentController struct {
 }
 
 // EPPPPI
-// type KeyWithTraceContexts struct {
-// 	Key   interface{}
-// 	Tctxs []*k8scpdtinst.TraceContext
-// }
+type KeyWithTraceContexts struct {
+	Key   interface{}
+	Tctxs []*k8scpdtinst.TraceContext
+}
 
 // NewDeploymentController creates a new DeploymentController.
 func NewDeploymentController(ctx context.Context, dInformer appsinformers.DeploymentInformer, rsInformer appsinformers.ReplicaSetInformer, podInformer coreinformers.PodInformer, client clientset.Interface) (*DeploymentController, error) {
@@ -191,16 +191,16 @@ func (dc *DeploymentController) Run(ctx context.Context, workers int) {
 func (dc *DeploymentController) addDeployment(logger klog.Logger, obj interface{}) {
 	d := obj.(*apps.Deployment)
 	logger.V(4).Info("Adding deployment", "deployment", klog.KObj(d))
-	// dc.enqueueDeployment(d, []*k8scpdtinst.TraceContext{k8scpdtinst.GetTraceContext(d)})
-	dc.enqueueDeployment(d)
+	dc.enqueueDeployment(d, []*k8scpdtinst.TraceContext{k8scpdtinst.GetTraceContext(d)})
+	// dc.enqueueDeployment(d)
 }
 
 func (dc *DeploymentController) updateDeployment(logger klog.Logger, old, cur interface{}) {
 	oldD := old.(*apps.Deployment)
 	curD := cur.(*apps.Deployment)
 	logger.V(4).Info("Updating deployment", "deployment", klog.KObj(oldD))
-	// dc.enqueueDeployment(curD, []*k8scpdtinst.TraceContext{k8scpdtinst.GetTraceContext(oldD), k8scpdtinst.GetTraceContext(curD)})
-	dc.enqueueDeployment(curD)
+	dc.enqueueDeployment(curD, []*k8scpdtinst.TraceContext{k8scpdtinst.GetTraceContext(oldD), k8scpdtinst.GetTraceContext(curD)})
+	// dc.enqueueDeployment(curD)
 }
 
 func (dc *DeploymentController) deleteDeployment(logger klog.Logger, obj interface{}) {
@@ -218,8 +218,8 @@ func (dc *DeploymentController) deleteDeployment(logger klog.Logger, obj interfa
 		}
 	}
 	logger.V(4).Info("Deleting deployment", "deployment", klog.KObj(d))
-	// dc.enqueueDeployment(d, []*k8scpdtinst.TraceContext{k8scpdtinst.GetTraceContext(d)})
-	dc.enqueueDeployment(d)
+	dc.enqueueDeployment(d, []*k8scpdtinst.TraceContext{k8scpdtinst.GetTraceContext(d)})
+	// dc.enqueueDeployment(d)
 }
 
 // addReplicaSet enqueues the deployment that manages a ReplicaSet when the ReplicaSet is created.
@@ -239,8 +239,8 @@ func (dc *DeploymentController) addReplicaSet(logger klog.Logger, obj interface{
 			return
 		}
 		logger.V(4).Info("ReplicaSet added", "replicaSet", klog.KObj(rs))
-		// dc.enqueueDeployment(d, []*k8scpdtinst.TraceContext{k8scpdtinst.GetTraceContext(rs)})
-		dc.enqueueDeployment(d)
+		dc.enqueueDeployment(d, []*k8scpdtinst.TraceContext{k8scpdtinst.GetTraceContext(rs)})
+		// dc.enqueueDeployment(d)
 		return
 	}
 
@@ -252,8 +252,8 @@ func (dc *DeploymentController) addReplicaSet(logger klog.Logger, obj interface{
 	}
 	logger.V(4).Info("Orphan ReplicaSet added", "replicaSet", klog.KObj(rs))
 	for _, d := range ds {
-		// dc.enqueueDeployment(d, []*k8scpdtinst.TraceContext{k8scpdtinst.GetTraceContext(rs)})
-		dc.enqueueDeployment(d)
+		dc.enqueueDeployment(d, []*k8scpdtinst.TraceContext{k8scpdtinst.GetTraceContext(rs)})
+		// dc.enqueueDeployment(d)
 	}
 }
 
@@ -296,8 +296,8 @@ func (dc *DeploymentController) updateReplicaSet(logger klog.Logger, old, cur in
 	if controllerRefChanged && oldControllerRef != nil {
 		// The ControllerRef was changed. Sync the old controller, if any.
 		if d := dc.resolveControllerRef(oldRS.Namespace, oldControllerRef); d != nil {
-			// dc.enqueueDeployment(d, []*k8scpdtinst.TraceContext{k8scpdtinst.GetTraceContext(curRS), k8scpdtinst.GetTraceContext(oldRS), k8scpdtinst.GetTraceContext(d)})
-			dc.enqueueDeployment(d)
+			dc.enqueueDeployment(d, []*k8scpdtinst.TraceContext{k8scpdtinst.GetTraceContext(curRS), k8scpdtinst.GetTraceContext(oldRS), k8scpdtinst.GetTraceContext(d)})
+			// dc.enqueueDeployment(d)
 		}
 	}
 	// If it has a ControllerRef, that's all that matters.
@@ -307,8 +307,8 @@ func (dc *DeploymentController) updateReplicaSet(logger klog.Logger, old, cur in
 			return
 		}
 		logger.V(4).Info("ReplicaSet updated", "replicaSet", klog.KObj(curRS))
-		// dc.enqueueDeployment(d, []*k8scpdtinst.TraceContext{k8scpdtinst.GetTraceContext(curRS), k8scpdtinst.GetTraceContext(oldRS), k8scpdtinst.GetTraceContext(d)})
-		dc.enqueueDeployment(d)
+		dc.enqueueDeployment(d, []*k8scpdtinst.TraceContext{k8scpdtinst.GetTraceContext(curRS), k8scpdtinst.GetTraceContext(oldRS), k8scpdtinst.GetTraceContext(d)})
+		// dc.enqueueDeployment(d)
 		return
 	}
 
@@ -322,8 +322,8 @@ func (dc *DeploymentController) updateReplicaSet(logger klog.Logger, old, cur in
 		}
 		logger.V(4).Info("Orphan ReplicaSet updated", "replicaSet", klog.KObj(curRS))
 		for _, d := range ds {
-			// dc.enqueueDeployment(d, []*k8scpdtinst.TraceContext{k8scpdtinst.GetTraceContext(curRS), k8scpdtinst.GetTraceContext(oldRS), k8scpdtinst.GetTraceContext(d)})
-			dc.enqueueDeployment(d)
+			dc.enqueueDeployment(d, []*k8scpdtinst.TraceContext{k8scpdtinst.GetTraceContext(curRS), k8scpdtinst.GetTraceContext(oldRS), k8scpdtinst.GetTraceContext(d)})
+			// dc.enqueueDeployment(d)
 		}
 	}
 }
@@ -361,8 +361,8 @@ func (dc *DeploymentController) deleteReplicaSet(logger klog.Logger, obj interfa
 		return
 	}
 	logger.V(4).Info("ReplicaSet deleted", "replicaSet", klog.KObj(rs))
-	// dc.enqueueDeployment(d, []*k8scpdtinst.TraceContext{k8scpdtinst.GetTraceContext(rs), k8scpdtinst.GetTraceContext(d)})
-	dc.enqueueDeployment(d)
+	dc.enqueueDeployment(d, []*k8scpdtinst.TraceContext{k8scpdtinst.GetTraceContext(rs), k8scpdtinst.GetTraceContext(d)})
+	// dc.enqueueDeployment(d)
 }
 
 // deletePod will enqueue a Recreate Deployment once all of its pods have stopped running.
@@ -402,26 +402,26 @@ func (dc *DeploymentController) deletePod(logger klog.Logger, obj interface{}) {
 		}
 		if numPods == 0 {
 			// EPPPPI: REFACTOR?: shold all tctxs of pods be added as source tctxs?
-			// dc.enqueueDeployment(d, nil)
-			dc.enqueueDeployment(d)
+			dc.enqueueDeployment(d, nil)
+			// dc.enqueueDeployment(d)
 		}
 	}
 }
 
-// func (dc *DeploymentController) enqueue(deployment *apps.Deployment, tctxsOfSrcObjs []*k8scpdtinst.TraceContext) {
-func (dc *DeploymentController) enqueue(deployment *apps.Deployment) {
+func (dc *DeploymentController) enqueue(deployment *apps.Deployment, tctxsOfSrcObjs []*k8scpdtinst.TraceContext) {
+	// func (dc *DeploymentController) enqueue(deployment *apps.Deployment) {
 	key, err := controller.KeyFunc(deployment)
 	if err != nil {
 		utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", deployment, err))
 		return
 	}
-	// keyWithTraceContexts := &KeyWithTraceContexts{
-	// 	Key:   key,
-	// 	Tctxs: tctxsOfSrcObjs,
-	// }
+	keyWithTraceContexts := &KeyWithTraceContexts{
+		Key:   key,
+		Tctxs: tctxsOfSrcObjs,
+	}
 
-	// dc.queue.Add(keyWithTraceContexts)
-	dc.queue.Add(key)
+	dc.queue.Add(keyWithTraceContexts)
+	// dc.queue.Add(key)
 }
 
 func (dc *DeploymentController) enqueueRateLimited(deployment *apps.Deployment) {
@@ -502,22 +502,22 @@ func (dc *DeploymentController) worker(ctx context.Context) {
 }
 
 func (dc *DeploymentController) processNextWorkItem(ctx context.Context) bool {
-	// keyWithTraceContexts, quit := dc.queue.Get()
-	key, quit := dc.queue.Get()
+	keyWithTraceContexts, quit := dc.queue.Get()
+	// key, quit := dc.queue.Get()
 	if quit {
 		return false
 	}
-	// var key interface{}
-	// if kwtctx, ok := keyWithTraceContexts.(*KeyWithTraceContexts); ok {
-	// 	// EPPPPI: if key is KeyWithTraceContexts, inject tctxs to ctx
-	// 	ctx = k8scpdtinst.SetTraceContextsToContext(ctx, kwtctx.Tctxs)
-	// 	key = kwtctx.Key
-	// } else {
-	// 	// EPPPPI: if key is not KeyWithTraceContexts, it is normal key
-	// 	key = keyWithTraceContexts
-	// }
-	// defer dc.queue.Done(keyWithTraceContexts)
-	defer dc.queue.Done(key)
+	var key interface{}
+	if kwtctx, ok := keyWithTraceContexts.(*KeyWithTraceContexts); ok {
+		// EPPPPI: if key is KeyWithTraceContexts, inject tctxs to ctx
+		ctx = k8scpdtinst.SetTraceContextsToContext(ctx, kwtctx.Tctxs)
+		key = kwtctx.Key
+	} else {
+		// EPPPPI: if key is not KeyWithTraceContexts, it is normal key
+		key = keyWithTraceContexts
+	}
+	defer dc.queue.Done(keyWithTraceContexts)
+	// defer dc.queue.Done(key)
 
 	err := dc.syncHandler(ctx, key.(string))
 	dc.handleErr(ctx, err, key)
@@ -616,6 +616,9 @@ func (dc *DeploymentController) getPodMapForDeployment(d *apps.Deployment, rsLis
 // syncDeployment will sync the deployment with the given key.
 // This function is not meant to be invoked concurrently with the same key.
 func (dc *DeploymentController) syncDeployment(ctx context.Context, key string) error {
+	if ctx == nil {
+		panic("EPPPPI-DEBUG: ctx is nil in syncDeployment()")
+	}
 	logger := klog.FromContext(ctx)
 	namespace, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
@@ -641,13 +644,19 @@ func (dc *DeploymentController) syncDeployment(ctx context.Context, key string) 
 	tctxs := k8scpdtinst.GetTraceContextsFromContext(ctx)
 	var span *k8scpdtinst.Span
 	if len(tctxs) > 0 {
-		ctx, span, err = k8scpdtinst.Start(ctx, "", "deployment-controller", "", "", "syncDeployment()")
+		klog.Info("EPPPPI-DEBUG ", "start span in syncDeployment()")
+		ctx, span, err = k8scpdtinst.Start(ctx, "", "deployment-controller", "", "", "syncDeployment()") // こいつがnilなctxを返してる可能性がある
+		if ctx == nil {
+			panic("EPPPPI-DEBUG: ctx is nil after span Start() in syncDeployment()")
+		}
 		if err != nil {
 			klog.Info("failed to start span,", err)
 		} else {
 			defer span.End()
 		}
 		ctx = k8scpdtinst.SetTraceContextsToContext(ctx, []*k8scpdtinst.TraceContext{tctxs[0]}) // tctxs are already in ctx
+	} else {
+		klog.Info("EPPPPI-DEBUG ", "no trace context in syncDeployment()")
 	}
 
 	// tctxs := k8scpdtinst.GetTraceContextsFromContext(ctx)
