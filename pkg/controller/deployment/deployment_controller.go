@@ -47,7 +47,8 @@ import (
 	"k8s.io/klog/v2"
 	"k8s.io/kubernetes/pkg/controller"
 	"k8s.io/kubernetes/pkg/controller/deployment/util"
-	// k8scpdtinst "github.com/eppppi/k8s-cp-dt/instrumentation"
+
+	k8scpdtinst "github.com/eppppi/k8s-cp-dt/instrumentation"
 )
 
 const (
@@ -636,18 +637,18 @@ func (dc *DeploymentController) syncDeployment(ctx context.Context, key string) 
 	if err != nil {
 		return err
 	}
-	// // EPPPPI: if ctx has any trace contexts, start a span
-	// tctxs := k8scpdtinst.GetTraceContextsFromContext(ctx)
-	// var span *k8scpdtinst.Span
-	// if len(tctxs) > 0 {
-	// 	ctx, span, err = k8scpdtinst.Start(ctx, "", "deployment-controller", "", "", "syncDeployment()")
-	// 	if err != nil {
-	// 		klog.Info("failed to start span,", err)
-	// 	} else {
-	// 		defer span.End()
-	// 	}
-	// 	// ctx = k8scpdtinst.SetTraceContextsToContext(ctx, []*k8scpdtinst.TraceContext{tctx}) // tctxs are already in ctx
-	// }
+	// EPPPPI: if ctx has any trace contexts, start a span
+	tctxs := k8scpdtinst.GetTraceContextsFromContext(ctx)
+	var span *k8scpdtinst.Span
+	if len(tctxs) > 0 {
+		ctx, span, err = k8scpdtinst.Start(ctx, "", "deployment-controller", "", "", "syncDeployment()")
+		if err != nil {
+			klog.Info("failed to start span,", err)
+		} else {
+			defer span.End()
+		}
+		ctx = k8scpdtinst.SetTraceContextsToContext(ctx, []*k8scpdtinst.TraceContext{tctxs[0]}) // tctxs are already in ctx
+	}
 
 	// tctxs := k8scpdtinst.GetTraceContextsFromContext(ctx)
 	// klog.Info("EPPPPI-DEBUG ", "len(tctxs) in syncDeployment() ", len(tctxs))

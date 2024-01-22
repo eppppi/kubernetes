@@ -34,7 +34,8 @@ import (
 	"k8s.io/kubernetes/pkg/controller"
 	deploymentutil "k8s.io/kubernetes/pkg/controller/deployment/util"
 	labelsutil "k8s.io/kubernetes/pkg/util/labels"
-	// k8scpdtinst "github.com/eppppi/k8s-cp-dt/instrumentation"
+
+	k8scpdtinst "github.com/eppppi/k8s-cp-dt/instrumentation"
 )
 
 // syncStatusOnly only updates Deployments Status and doesn't take any mutating actions.
@@ -140,19 +141,19 @@ const (
 // 3. If there's no existing new RS and createIfNotExisted is true, create one with appropriate revision number (maxOldRevision + 1) and replicas.
 // Note that the pod-template-hash will be added to adopted RSes and pods.
 func (dc *DeploymentController) getNewReplicaSet(ctx context.Context, d *apps.Deployment, rsList, oldRSs []*apps.ReplicaSet, createIfNotExisted bool) (*apps.ReplicaSet, error) {
-	// // EPPPPI: start span if ctx has trace context
-	// tctxs := k8scpdtinst.GetTraceContextsFromContext(ctx)
-	// var span *k8scpdtinst.Span
-	// var err error
-	// if len(tctxs) != 0 {
-	// 	// start span only when any trace context are set in ctx
-	// 	ctx, span, err = k8scpdtinst.Start(ctx, "", "deployment-controller", "", "", "getNewReplicaSet()")
-	// 	if err != nil {
-	// 		klog.Info("failed to start span:", err)
-	// 	} else {
-	// 		defer span.End()
-	// 	}
-	// }
+	// EPPPPI: start span if ctx has trace context
+	tctxs := k8scpdtinst.GetTraceContextsFromContext(ctx)
+	var span *k8scpdtinst.Span
+	var err error
+	if len(tctxs) != 0 {
+		// start span only when any trace context are set in ctx
+		ctx, span, err = k8scpdtinst.Start(ctx, "", "deployment-controller", "", "", "getNewReplicaSet()")
+		if err != nil {
+			klog.Info("failed to start span:", err)
+		} else {
+			defer span.End()
+		}
+	}
 
 	logger := klog.FromContext(ctx)
 	existingNewRS := deploymentutil.FindNewReplicaSet(d, rsList)

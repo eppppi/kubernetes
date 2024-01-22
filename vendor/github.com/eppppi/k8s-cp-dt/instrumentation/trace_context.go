@@ -46,6 +46,11 @@ func (tctx *TraceContext) validateTctx() error {
 	return nil
 }
 
+type KeyWithTraceContexts struct {
+	Key       interface{}
+	TraceCtxs []*TraceContext
+}
+
 // NewRootTraceContext creates a new root trace context and send mergelog of it
 func NewRootTraceContextAndSendMergelog(message, by string) *TraceContext {
 	cpid, _ := generateCpid()

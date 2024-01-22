@@ -32,5 +32,5 @@ options ndots:5
 		fmt.Println("failed to write resolv.conf: ", err)
 		return
 	}
-	fmt.Println("success to write resolv.conf")
+	fmt.Println("sucessfully wrote resolv.conf")
 }

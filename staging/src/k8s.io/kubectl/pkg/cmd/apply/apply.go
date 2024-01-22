@@ -783,13 +783,13 @@ See https://kubernetes.io/docs/reference/using-api/server-side-apply/#conflicts`
 			if len(tctxs) != 1 {
 				panic("This should not happen")
 			}
-			// newTctx := tctxs[0]
+			newTctx := tctxs[0]
 
-			// mergedTctx := k8scpdtinst.MergeAndSendMergelog([]*k8scpdtinst.TraceContext{newTctx, refTctx}, "apply (change)", "kubectl")
-			// if err != nil {
-			// 	panic(err)
-			// }
-			// defer fmt.Println("merged cpid is:", mergedTctx.Cpid)
+			mergedTctx := k8scpdtinst.MergeAndSendMergelog([]*k8scpdtinst.TraceContext{newTctx, refTctx}, "apply (change)", "kubectl")
+			if err != nil {
+				panic(err)
+			}
+			defer fmt.Println("merged cpid is:", mergedTctx.Cpid)
 
 			s := runtime.NewScheme()
 			clientgoscheme.AddToScheme(s)
@@ -798,10 +798,10 @@ See https://kubernetes.io/docs/reference/using-api/server-side-apply/#conflicts`
 			if err != nil {
 				panic(err)
 			}
-			// err = k8scpdtinst.SetTraceContext(objOfModified, mergedTctx)
-			// if err != nil {
-			// 	panic(err)
-			// }
+			err = k8scpdtinst.SetTraceContext(objOfModified, mergedTctx)
+			if err != nil {
+				panic(err)
+			}
 			modified, err = json.Marshal(objOfModified)
 			if err != nil {
 				panic(err)

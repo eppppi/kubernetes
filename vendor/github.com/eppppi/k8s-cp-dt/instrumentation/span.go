@@ -45,6 +45,12 @@ func SetTraceContextsToContext(ctx context.Context, tctxs []*TraceContext) conte
 	return context.WithValue(ctx, kOC_TCTX_KEY, tctxs)
 }
 
+func AddTraceContextToContext(ctx context.Context, tctx *TraceContext) context.Context {
+	tctxs := GetTraceContextsFromContext(ctx)
+	tctxs = append(tctxs, tctx)
+	return SetTraceContextsToContext(ctx, tctxs)
+}
+
 var (
 	spanCh     chan *mergelogpb.Span
 	mergelogCh chan *mergelogpb.Mergelog
@@ -125,20 +131,14 @@ func (s *Span) End() {
 }
 
 // GenerateNewTctxAndSendMergelog generates a new trace context. if retTctx is nil, no mergelog is sent.
-func MergeAndSendMergelog(newTctx *TraceContext, sourceTctxs []*TraceContext, causeMsg, by string) (*TraceContext, error) {
-	return mergeAndSendMergelog(newTctx, sourceTctxs, causeMsg, by)
+func MergeAndSendMergelog(sourceTctxs []*TraceContext, causeMsg, by string) *TraceContext {
+	return mergeAndSendMergelog(sourceTctxs, causeMsg, by)
 }
 
 // generateNewTctxAndSendMergelog generates a new trace context. if retTctx is nil, no mergelog is sent.
-func mergeAndSendMergelog(newTctx *TraceContext, sourceTctxs []*TraceContext, causeMsg, by string) (*TraceContext, error) {
+func mergeAndSendMergelog(sourceTctxs []*TraceContext, causeMsg, by string) *TraceContext {
 	log.Println("EPPPPI-DEBUG: mergeAndSendMergelog() started")
 	defer log.Println("EPPPPI-DEBUG: mergeAndSendMergelog() ended")
-	// validate arguments
-	if err := newTctx.validateTctx(); err != nil {
-		return nil, err
-	}
-	// deep-copy tctxs so that the original tctxs are not modified
-	newTctx = newTctx.DeepCopyTraceContext()
 	newSourceTctxs := make([]*TraceContext, 0)
 	for i := 0; i < len(sourceTctxs); i++ {
 		if err := sourceTctxs[i].validateTctx(); err != nil {
@@ -148,18 +148,19 @@ func mergeAndSendMergelog(newTctx *TraceContext, sourceTctxs []*TraceContext, ca
 		}
 	}
 	if len(newSourceTctxs) == 0 {
-		log.Println("size of valid sourceTctxs is 0, so no need to merge and no mergelog is sent")
-		return newTctx, nil
+		return nil
+	} else if len(newSourceTctxs) == 1 {
+		return newSourceTctxs[0]
 	}
 
-	retTctx, newCpid, sourceCpids := mergeTctxs(append(newSourceTctxs, newTctx))
+	retTctx, newCpid, sourceCpids := mergeTctxs(newSourceTctxs)
 	if sourceCpids != nil {
 		err := sendMergelog(newCpid, sourceCpids, mergelogpb.CauseType_CAUSE_TYPE_MERGE, causeMsg, by)
 		if err != nil {
 			panic(err) // should not happen because of prior validation
 		}
 	}
-	return retTctx, nil
+	return retTctx
 }
 
 // GenerateAndSendMergelog generates a mergelog and push it to channel
