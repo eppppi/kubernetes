@@ -24,13 +24,14 @@ import (
 	_ "k8s.io/component-base/metrics/prometheus/clientgo"
 	_ "k8s.io/component-base/metrics/prometheus/version" // for version metric registration
 	"k8s.io/kubernetes/cmd/kube-scheduler/app"
-	// k8scpdtinst "github.com/eppppi/k8s-cp-dt/instrumentation"
+
+	k8scpdtinst "github.com/eppppi/k8s-cp-dt/instrumentation"
 )
 
 func main() {
-	// k8scpdtinst.WriteResolvconf()
-	// cancel := k8scpdtinst.SetupTraceServerClient("trace-server-svc.trace-server-ns.svc.cluster.local:9000") // This function does not wait (block) for setup because trace server is deployed after controller-manager
-	// defer cancel()
+	k8scpdtinst.WriteResolvconf()
+	cancel := k8scpdtinst.SetupTraceServerClient("trace-server-svc.trace-server-ns.svc.cluster.local:9000") // This function does not wait (block) for setup because trace server is deployed after controller-manager
+	defer cancel()
 
 	command := app.NewSchedulerCommand()
 	code := cli.Run(command)

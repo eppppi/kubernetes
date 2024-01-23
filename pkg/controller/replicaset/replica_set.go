@@ -120,10 +120,10 @@ type ReplicaSetController struct {
 	queue workqueue.RateLimitingInterface
 }
 
-// type KeyWithTraceContexts struct {
-// 	Key   interface{}
-// 	Tctxs []*k8scpdtinst.TraceContext
-// }
+type KeyWithTraceContexts struct {
+	Key   interface{}
+	Tctxs []*k8scpdtinst.TraceContext
+}
 
 // NewReplicaSetController configures a replica set controller with the specified event recorder
 func NewReplicaSetController(logger klog.Logger, rsInformer appsinformers.ReplicaSetInformer, podInformer coreinformers.PodInformer, kubeClient clientset.Interface, burstReplicas int) *ReplicaSetController {
@@ -301,46 +301,46 @@ func (rsc *ReplicaSetController) resolveControllerRef(namespace string, controll
 	return rs
 }
 
-// func (rsc *ReplicaSetController) enqueueRS(rs *apps.ReplicaSet, tctxsOfSrcObjs []*k8scpdtinst.TraceContext) {
-func (rsc *ReplicaSetController) enqueueRS(rs *apps.ReplicaSet) {
+func (rsc *ReplicaSetController) enqueueRS(rs *apps.ReplicaSet, tctxsOfSrcObjs []*k8scpdtinst.TraceContext) {
+	// func (rsc *ReplicaSetController) enqueueRS(rs *apps.ReplicaSet) {
 	key, err := controller.KeyFunc(rs)
 	if err != nil {
 		utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", rs, err))
 		return
 	}
-	// keyWithTraceContexts := &KeyWithTraceContexts{
-	// 	Key:   key,
-	// 	Tctxs: tctxsOfSrcObjs,
-	// }
+	keyWithTraceContexts := &KeyWithTraceContexts{
+		Key:   key,
+		Tctxs: tctxsOfSrcObjs,
+	}
 
 	// EPPPPI TODO: start span?
-	// rsc.queue.Add(keyWithTraceContexts)
-	rsc.queue.Add(key)
+	rsc.queue.Add(keyWithTraceContexts)
+	// rsc.queue.Add(key)
 }
 
-// func (rsc *ReplicaSetController) enqueueRSAfter(rs *apps.ReplicaSet, duration time.Duration, tctxsOfSrcObjs []*k8scpdtinst.TraceContext) {
-func (rsc *ReplicaSetController) enqueueRSAfter(rs *apps.ReplicaSet, duration time.Duration) {
+func (rsc *ReplicaSetController) enqueueRSAfter(rs *apps.ReplicaSet, duration time.Duration, tctxsOfSrcObjs []*k8scpdtinst.TraceContext) {
+	// func (rsc *ReplicaSetController) enqueueRSAfter(rs *apps.ReplicaSet, duration time.Duration) {
 	key, err := controller.KeyFunc(rs)
 	if err != nil {
 		utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", rs, err))
 		return
 	}
-	// keyWithTraceContexts := &KeyWithTraceContexts{
-	// 	Key:   key,
-	// 	Tctxs: tctxsOfSrcObjs,
-	// }
+	keyWithTraceContexts := &KeyWithTraceContexts{
+		Key:   key,
+		Tctxs: tctxsOfSrcObjs,
+	}
 
 	// EPPPPI TODO: start span?
-	// rsc.queue.AddAfter(keyWithTraceContexts, duration)
-	rsc.queue.AddAfter(key, duration)
+	rsc.queue.AddAfter(keyWithTraceContexts, duration)
+	// rsc.queue.AddAfter(key, duration)
 }
 
 func (rsc *ReplicaSetController) addRS(logger klog.Logger, obj interface{}) {
 	rs := obj.(*apps.ReplicaSet)
 	logger.V(4).Info("Adding", "replicaSet", klog.KObj(rs))
 	// EPPPPI TODO: start span?
-	// rsc.enqueueRS(rs, []*k8scpdtinst.TraceContext{k8scpdtinst.GetTraceContext(rs)})
-	rsc.enqueueRS(rs)
+	rsc.enqueueRS(rs, []*k8scpdtinst.TraceContext{k8scpdtinst.GetTraceContext(rs)})
+	// rsc.enqueueRS(rs)
 }
 
 // callback when RS is updated
@@ -377,8 +377,8 @@ func (rsc *ReplicaSetController) updateRS(logger klog.Logger, old, cur interface
 		logger.V(4).Info("replicaSet updated. Desired pod count change.", "replicaSet", klog.KObj(oldRS), "oldReplicas", *(oldRS.Spec.Replicas), "newReplicas", *(curRS.Spec.Replicas))
 	}
 	// ETODO: start span?
-	// rsc.enqueueRS(curRS, []*k8scpdtinst.TraceContext{k8scpdtinst.GetTraceContext(oldRS), k8scpdtinst.GetTraceContext(curRS)})
-	rsc.enqueueRS(curRS)
+	rsc.enqueueRS(curRS, []*k8scpdtinst.TraceContext{k8scpdtinst.GetTraceContext(oldRS), k8scpdtinst.GetTraceContext(curRS)})
+	// rsc.enqueueRS(curRS)
 }
 
 func (rsc *ReplicaSetController) deleteRS(logger klog.Logger, obj interface{}) {
@@ -407,12 +407,12 @@ func (rsc *ReplicaSetController) deleteRS(logger klog.Logger, obj interface{}) {
 	// Delete expectations for the ReplicaSet so if we create a new one with the same name it starts clean
 	rsc.expectations.DeleteExpectations(logger, key)
 
-	// keyWithTraceContexts := &KeyWithTraceContexts{
-	// 	Key:   key,
-	// 	Tctxs: []*k8scpdtinst.TraceContext{k8scpdtinst.GetTraceContext(rs)},
-	// }
-	// rsc.queue.Add(keyWithTraceContexts)
-	rsc.queue.Add(key)
+	keyWithTraceContexts := &KeyWithTraceContexts{
+		Key:   key,
+		Tctxs: []*k8scpdtinst.TraceContext{k8scpdtinst.GetTraceContext(rs)},
+	}
+	rsc.queue.Add(keyWithTraceContexts)
+	// rsc.queue.Add(key)
 }
 
 // When a pod is created, enqueue the replica set that manages it and update its expectations.
@@ -438,12 +438,12 @@ func (rsc *ReplicaSetController) addPod(logger klog.Logger, obj interface{}) {
 		}
 		logger.V(4).Info("Pod created", "pod", klog.KObj(pod), "detail", pod)
 		rsc.expectations.CreationObserved(logger, rsKey)
-		// rsKeyWithTraceContexts := &KeyWithTraceContexts{
-		// 	Key:   rsKey,
-		// 	Tctxs: []*k8scpdtinst.TraceContext{k8scpdtinst.GetTraceContext(rs)},
-		// }
-		// rsc.queue.Add(rsKeyWithTraceContexts)
-		rsc.queue.Add(rsKey)
+		rsKeyWithTraceContexts := &KeyWithTraceContexts{
+			Key:   rsKey,
+			Tctxs: []*k8scpdtinst.TraceContext{k8scpdtinst.GetTraceContext(rs)},
+		}
+		rsc.queue.Add(rsKeyWithTraceContexts)
+		// rsc.queue.Add(rsKey)
 		return
 	}
 
@@ -457,8 +457,8 @@ func (rsc *ReplicaSetController) addPod(logger klog.Logger, obj interface{}) {
 	}
 	logger.V(4).Info("Orphan Pod created", "pod", klog.KObj(pod), "detail", pod)
 	for _, rs := range rss {
-		// rsc.enqueueRS(rs, []*k8scpdtinst.TraceContext{k8scpdtinst.GetTraceContext(rs)})
-		rsc.enqueueRS(rs)
+		rsc.enqueueRS(rs, []*k8scpdtinst.TraceContext{k8scpdtinst.GetTraceContext(rs)})
+		// rsc.enqueueRS(rs)
 	}
 }
 
@@ -495,8 +495,8 @@ func (rsc *ReplicaSetController) updatePod(logger klog.Logger, old, cur interfac
 	if controllerRefChanged && oldControllerRef != nil {
 		// The ControllerRef was changed. Sync the old controller, if any.
 		if rs := rsc.resolveControllerRef(oldPod.Namespace, oldControllerRef); rs != nil {
-			// rsc.enqueueRS(rs, []*k8scpdtinst.TraceContext{k8scpdtinst.GetTraceContext(rs), k8scpdtinst.GetTraceContext(curPod), k8scpdtinst.GetTraceContext(oldPod)})
-			rsc.enqueueRS(rs)
+			rsc.enqueueRS(rs, []*k8scpdtinst.TraceContext{k8scpdtinst.GetTraceContext(rs), k8scpdtinst.GetTraceContext(curPod), k8scpdtinst.GetTraceContext(oldPod)})
+			// rsc.enqueueRS(rs)
 		}
 	}
 
@@ -507,8 +507,8 @@ func (rsc *ReplicaSetController) updatePod(logger klog.Logger, old, cur interfac
 			return
 		}
 		logger.V(4).Info("Pod objectMeta updated.", "pod", klog.KObj(oldPod), "oldObjectMeta", oldPod.ObjectMeta, "curObjectMeta", curPod.ObjectMeta)
-		// rsc.enqueueRS(rs, []*k8scpdtinst.TraceContext{k8scpdtinst.GetTraceContext(rs), k8scpdtinst.GetTraceContext(curPod), k8scpdtinst.GetTraceContext(oldPod)})
-		rsc.enqueueRS(rs)
+		rsc.enqueueRS(rs, []*k8scpdtinst.TraceContext{k8scpdtinst.GetTraceContext(rs), k8scpdtinst.GetTraceContext(curPod), k8scpdtinst.GetTraceContext(oldPod)})
+		// rsc.enqueueRS(rs)
 		// TODO: MinReadySeconds in the Pod will generate an Available condition to be added in
 		// the Pod status which in turn will trigger a requeue of the owning replica set thus
 		// having its status updated with the newly available replica. For now, we can fake the
@@ -520,8 +520,8 @@ func (rsc *ReplicaSetController) updatePod(logger klog.Logger, old, cur interfac
 			logger.V(2).Info("pod will be enqueued after a while for availability check", "duration", rs.Spec.MinReadySeconds, "kind", rsc.Kind, "pod", klog.KObj(oldPod))
 			// Add a second to avoid milliseconds skew in AddAfter.
 			// See https://github.com/kubernetes/kubernetes/issues/39785#issuecomment-279959133 for more info.
-			// rsc.enqueueRSAfter(rs, (time.Duration(rs.Spec.MinReadySeconds)*time.Second)+time.Second, []*k8scpdtinst.TraceContext{k8scpdtinst.GetTraceContext(rs), k8scpdtinst.GetTraceContext(curPod), k8scpdtinst.GetTraceContext(oldPod)})
-			rsc.enqueueRSAfter(rs, (time.Duration(rs.Spec.MinReadySeconds)*time.Second)+time.Second)
+			rsc.enqueueRSAfter(rs, (time.Duration(rs.Spec.MinReadySeconds)*time.Second)+time.Second, []*k8scpdtinst.TraceContext{k8scpdtinst.GetTraceContext(rs), k8scpdtinst.GetTraceContext(curPod), k8scpdtinst.GetTraceContext(oldPod)})
+			// rsc.enqueueRSAfter(rs, (time.Duration(rs.Spec.MinReadySeconds)*time.Second)+time.Second)
 		}
 		return
 	}
@@ -536,8 +536,8 @@ func (rsc *ReplicaSetController) updatePod(logger klog.Logger, old, cur interfac
 		logger.V(4).Info("Orphan Pod objectMeta updated.", "pod", klog.KObj(oldPod), "oldObjectMeta", oldPod.ObjectMeta, "curObjectMeta", curPod.ObjectMeta)
 		for _, rs := range rss {
 			// EPPPPI TODO: add source objects' trace contexts?
-			// rsc.enqueueRS(rs, nil)
-			rsc.enqueueRS(rs)
+			rsc.enqueueRS(rs, nil)
+			// rsc.enqueueRS(rs)
 		}
 	}
 }
@@ -580,12 +580,12 @@ func (rsc *ReplicaSetController) deletePod(logger klog.Logger, obj interface{}) 
 	}
 	logger.V(4).Info("Pod deleted", "delete_by", utilruntime.GetCaller(), "deletion_timestamp", pod.DeletionTimestamp, "pod", klog.KObj(pod))
 	rsc.expectations.DeletionObserved(logger, rsKey, controller.PodKey(pod))
-	// rskeyWithTraceContexts := &KeyWithTraceContexts{
-	// 	Key:   rsKey,
-	// 	Tctxs: []*k8scpdtinst.TraceContext{k8scpdtinst.GetTraceContext(rs), k8scpdtinst.GetTraceContext(pod)},
-	// }
-	// rsc.queue.Add(rskeyWithTraceContexts)
-	rsc.queue.Add(rsKey)
+	rskeyWithTraceContexts := &KeyWithTraceContexts{
+		Key:   rsKey,
+		Tctxs: []*k8scpdtinst.TraceContext{k8scpdtinst.GetTraceContext(rs), k8scpdtinst.GetTraceContext(pod)},
+	}
+	rsc.queue.Add(rskeyWithTraceContexts)
+	// rsc.queue.Add(rsKey)
 }
 
 // worker runs a worker thread that just dequeues items, processes them, and marks them done.
@@ -596,33 +596,33 @@ func (rsc *ReplicaSetController) worker(ctx context.Context) {
 }
 
 func (rsc *ReplicaSetController) processNextWorkItem(ctx context.Context) bool {
-	// keyWithTraceContexts, quit := rsc.queue.Get()
-	key, quit := rsc.queue.Get()
+	keyWithTraceContexts, quit := rsc.queue.Get()
+	// key, quit := rsc.queue.Get()
 	if quit {
 		return false
 	}
-	// var key interface{}
-	// if kwtctx, ok := keyWithTraceContexts.(*KeyWithTraceContexts); ok {
-	// 	// EPPPPI: if key is KeyWithTraceContexts, inject tctxs to ctx
-	// 	ctx = k8scpdtinst.SetTraceContextsToContext(ctx, kwtctx.Tctxs)
-	// 	key = kwtctx.Key
-	// } else {
-	// 	// EPPPPI: if key is not KeyWithTraceContexts, it is normal key
-	// 	key = keyWithTraceContexts
-	// }
-	// defer rsc.queue.Done(keyWithTraceContexts)
+	var key interface{}
+	if kwtctx, ok := keyWithTraceContexts.(*KeyWithTraceContexts); ok {
+		// EPPPPI: if key is KeyWithTraceContexts, inject tctxs to ctx
+		ctx = k8scpdtinst.SetTraceContextsToContext(ctx, kwtctx.Tctxs)
+		key = kwtctx.Key
+	} else {
+		// EPPPPI: if key is not KeyWithTraceContexts, it is normal key
+		key = keyWithTraceContexts
+	}
+	defer rsc.queue.Done(keyWithTraceContexts)
 	defer rsc.queue.Done(key)
 
 	err := rsc.syncHandler(ctx, key.(string))
 	if err == nil {
-		// rsc.queue.Forget(keyWithTraceContexts)
-		rsc.queue.Forget(key)
+		rsc.queue.Forget(keyWithTraceContexts)
+		// rsc.queue.Forget(key)
 		return true
 	}
 
 	utilruntime.HandleError(fmt.Errorf("sync %q failed with %v", key, err))
-	// rsc.queue.AddRateLimited(keyWithTraceContexts)
-	rsc.queue.AddRateLimited(key)
+	rsc.queue.AddRateLimited(keyWithTraceContexts)
+	// rsc.queue.AddRateLimited(key)
 
 	return true
 }
@@ -673,7 +673,8 @@ func (rsc *ReplicaSetController) manageReplicas(ctx context.Context, filteredPod
 		// after one of its pods fails.  Conveniently, this also prevents the
 		// event spam that those failures would generate.
 		successfulCreations, err := slowStartBatch(diff, controller.SlowStartInitialBatchSize, func() error {
-			// EPPPPI: start span for each pod creation
+			// EPPPPI: start span for each pod creation?
+			// EPPPPI: TODO: add source objects' trace contexts to pods
 			err := rsc.podControl.CreatePods(ctx, rs.Namespace, &rs.Spec.Template, rs, metav1.NewControllerRef(rs, rsc.GroupVersionKind))
 			if err != nil {
 				if apierrors.HasStatusCause(err, v1.NamespaceTerminatingCause) {
@@ -781,7 +782,7 @@ func (rsc *ReplicaSetController) syncReplicaSet(ctx context.Context, key string)
 		} else {
 			defer span.End()
 		}
-		ctx = k8scpdtinst.SetTraceContextsToContext(ctx, []*k8scpdtinst.TraceContext{tctxs[0]}) // tctxs are already in ctx
+		// ctx = k8scpdtinst.SetTraceContextsToContext(ctx, []*k8scpdtinst.TraceContext{tctxs[0]}) // tctxs are already in ctx
 	}
 
 	rsNeedsSync := rsc.expectations.SatisfiedExpectations(logger, key)
@@ -808,9 +809,10 @@ func (rsc *ReplicaSetController) syncReplicaSet(ctx context.Context, key string)
 		return err
 	}
 
-	// // EPPPPI: send mergelog
-	// newTctx := k8scpdtinst.MergeAndSendMergelog(k8scpdtinst.GetTraceContextsFromContext(ctx), "In syncReplicaSet()", "replicaset-controller")
-	// _ = k8scpdtinst.SetTraceContext(rs, newTctx)
+	// EPPPPI: send mergelog
+	newTctx := k8scpdtinst.MergeAndSendMergelog(k8scpdtinst.GetTraceContextsFromContext(ctx), "In syncReplicaSet()", "replicaset-controller")
+	klog.Info("EPPPPI-DEBUG: newTctx.GetCpid(): ", newTctx.GetCpid())
+	_ = k8scpdtinst.SetTraceContext(rs, newTctx)
 	var manageReplicasErr error
 	if rsNeedsSync && rs.DeletionTimestamp == nil {
 		// EPPPPI: main logic
@@ -827,15 +829,15 @@ func (rsc *ReplicaSetController) syncReplicaSet(ctx context.Context, key string)
 		return err
 	}
 	// Resync the ReplicaSet after MinReadySeconds as a last line of defense to guard against clock-skew.
-	// keyWithTraceContexts := &KeyWithTraceContexts{
-	// 	Key:   key,
-	// 	Tctxs: k8scpdtinst.GetTraceContextsFromContext(ctx),
-	// }
+	keyWithTraceContexts := &KeyWithTraceContexts{
+		Key:   key,
+		Tctxs: k8scpdtinst.GetTraceContextsFromContext(ctx),
+	}
 	if manageReplicasErr == nil && updatedRS.Spec.MinReadySeconds > 0 &&
 		updatedRS.Status.ReadyReplicas == *(updatedRS.Spec.Replicas) &&
 		updatedRS.Status.AvailableReplicas != *(updatedRS.Spec.Replicas) {
-		// rsc.queue.AddAfter(keyWithTraceContexts, time.Duration(updatedRS.Spec.MinReadySeconds)*time.Second)
-		rsc.queue.AddAfter(key, time.Duration(updatedRS.Spec.MinReadySeconds)*time.Second)
+		rsc.queue.AddAfter(keyWithTraceContexts, time.Duration(updatedRS.Spec.MinReadySeconds)*time.Second)
+		// rsc.queue.AddAfter(key, time.Duration(updatedRS.Spec.MinReadySeconds)*time.Second)
 	}
 	return manageReplicasErr
 }

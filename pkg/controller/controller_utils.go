@@ -542,7 +542,7 @@ func (r RealPodControl) CreatePodsWithGenerateName(ctx context.Context, namespac
 	if err != nil {
 		return err
 	}
-	// EPPPPI: pass trace context to pod
+	// EPPPPI: pass trace context to pod here
 	rsTctx := k8scpdtinst.GetTraceContext(controllerObject)
 	if rsTctx != nil {
 		err = k8scpdtinst.SetTraceContext(pod, rsTctx)
